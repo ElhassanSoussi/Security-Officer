@@ -209,9 +209,7 @@ def deep_health_check():
         "SUPABASE_URL": bool((settings.SUPABASE_URL or "").strip()),
         "SUPABASE_KEY": bool((settings.SUPABASE_KEY or "").strip()),
         "SUPABASE_JWT_SECRET": bool((settings.SUPABASE_JWT_SECRET or "").strip()),
-        "SUPABASE_SERVICE_ROLE_KEY": bool(
-            (getattr(settings, "SUPABASE_SECRET_KEY", "") or getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", "") or "").strip()
-        ),
+        "SUPABASE_SERVICE_ROLE_KEY": bool((settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()),
     }
     missing_env = [k for k, ok in env_required.items() if not ok]
     checks = {"database": False, "storage": False, "billing": not billing_enabled, "rls": False}

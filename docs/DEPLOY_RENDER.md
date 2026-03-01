@@ -87,9 +87,8 @@ Set these in **Render Dashboard → Environment → Environment Variables**:
 |----------|---------|-------------|
 | `ENVIRONMENT` | `production` | Must be `production` for security hardening |
 | `SUPABASE_URL` | `https://xxx.supabase.co` | Supabase project URL |
-| `SUPABASE_KEY` | `eyJ...` | Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` | Supabase service-role key (admin access) |
-| `SUPABASE_JWT_SECRET` | `your-jwt-secret` | Supabase JWT secret (Settings → API) |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` | Supabase service-role key (Dashboard → Settings → API) |
+| `SUPABASE_JWT_SECRET` | `your-jwt-secret` | Supabase JWT secret (Dashboard → Settings → API) |
 | `OPENAI_API_KEY` | `sk-...` | OpenAI API key |
 | `ALLOWED_ORIGINS` | `https://yourapp.vercel.app,https://yourdomain.com` | Comma-separated allowed CORS origins |
 
@@ -97,7 +96,8 @@ Set these in **Render Dashboard → Environment → Environment Variables**:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SUPABASE_SECRET_KEY` | *(empty)* | Alias for `SUPABASE_SERVICE_ROLE_KEY` |
+| `SUPABASE_KEY` | *(falls back to service-role key)* | Supabase anon/public key (for RLS-scoped clients) |
+| `SUPABASE_SECRET_KEY` | *(empty)* | Legacy alias for `SUPABASE_SERVICE_ROLE_KEY` |
 | `BILLING_ENABLED` | `false` | Enable Stripe billing integration |
 | `STRIPE_SECRET_KEY` | *(empty)* | Required when `BILLING_ENABLED=true` |
 | `STRIPE_WEBHOOK_SECRET` | *(empty)* | Required when `BILLING_ENABLED=true` |

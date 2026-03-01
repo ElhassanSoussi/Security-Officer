@@ -105,19 +105,40 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     settings = Settings()
-    # Fail fast on missing required configuration (all environments).
+
+    # ── Normalise service-role key aliases ──────────────────────────────────
+    # Accept ANY of: SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEY.
+    # Whichever is set, copy it into SUPABASE_SERVICE_ROLE_KEY so every
+    # downstream module can just read that single field.
+    _svc = (
+        settings.SUPABASE_SERVICE_ROLE_KEY
+        or settings.SUPABASE_SECRET_KEY
+    ).strip()
+    if _svc:
+        settings.SUPABASE_SERVICE_ROLE_KEY = _svc
+
+    # ── Normalise anon key ──────────────────────────────────────────────────
+    # SUPABASE_KEY (anon/public key) is used for RLS-scoped clients.
+    # If the user only provided the service-role key, fall back to it so the
+    # app can at least start (admin endpoints still work fine).
+    if not (settings.SUPABASE_KEY or "").strip() and _svc:
+        settings.SUPABASE_KEY = _svc
+
+    # ── Fail-fast: required env vars ────────────────────────────────────────
     required = {
         "SUPABASE_URL": settings.SUPABASE_URL,
-        "SUPABASE_KEY": settings.SUPABASE_KEY,
+        "SUPABASE_SERVICE_ROLE_KEY": settings.SUPABASE_SERVICE_ROLE_KEY,
         "SUPABASE_JWT_SECRET": settings.SUPABASE_JWT_SECRET,
     }
-    # Accept either SUPABASE_SECRET_KEY (preferred) or SUPABASE_SERVICE_ROLE_KEY for admin calls.
-    service_key = settings.SUPABASE_SECRET_KEY or settings.SUPABASE_SERVICE_ROLE_KEY
-    required["SUPABASE_SERVICE_ROLE_KEY"] = service_key
-
-    missing = [k for k, v in required.items() if not v or "your-" in v]
+    missing = [k for k, v in required.items() if not (v or "").strip() or "your-" in v]
     if missing:
-        raise ValueError(f"CRITICAL ERROR: Missing required env vars: {', '.join(missing)}")
+        hint = (
+            "Set these in your Render dashboard (Environment → Environment Variables) "
+            "or in backend/.env for local development."
+        )
+        raise ValueError(
+            f"CRITICAL: missing required env var(s): {', '.join(missing)}. {hint}"
+        )
 
     # Stripe: only mandatory when billing is enabled.
     if settings.BILLING_ENABLED:
