@@ -18,6 +18,11 @@ export function AuthGate({ children }: AuthGateProps) {
         let mounted = true;
         const supabase = createClient();
 
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
+
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!mounted) return;
@@ -35,7 +40,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
         checkSession();
 
-        const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+        const { data: listener } = supabase.auth.onAuthStateChange((event: string) => {
             if (!mounted) return;
             if (event === "SIGNED_OUT") {
                 setIsAuthed(false);

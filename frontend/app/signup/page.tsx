@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient, getClientInitError } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,13 +25,8 @@ export default function SignupPage() {
     const router = useRouter();
     const { toast } = useToast();
 
-    let supabase: ReturnType<typeof createClient> | null = null;
-    let initError = "";
-    try {
-        supabase = createClient();
-    } catch (err: any) {
-        initError = String(err?.message || "Supabase client is not configured.");
-    }
+    const supabase = createClient();
+    const initError = getClientInitError() || "Supabase client is not configured.";
 
     const mapAuthError = (err: any): string => {
         const msg = String(err?.message || "Signup failed");

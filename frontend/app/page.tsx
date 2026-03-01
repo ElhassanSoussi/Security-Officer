@@ -16,9 +16,11 @@ import {
 export default async function LandingPage() {
     try {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            redirect("/dashboard");
+        if (supabase) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                redirect("/dashboard");
+            }
         }
     } catch {
         // If env is missing, RootLayout already renders a dedicated config error.

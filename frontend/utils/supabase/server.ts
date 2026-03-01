@@ -1,35 +1,23 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-let didLogHost = false;
-
-function requirePublicEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY"): string {
-    const envValues = {
-        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    } as const;
-    const value = envValues[name];
-    if (!value || !value.trim()) {
-        throw new Error(`Missing required env var: ${name}`);
-    }
-    return value.trim();
-}
-
+/**
+ * Create a Supabase *server* client (for Server Components / Route Handlers).
+ *
+ * Returns `null` when the required NEXT_PUBLIC_SUPABASE_* env vars are missing
+ * so that build-time prerendering never crashes.  Callers (e.g. the landing
+ * page) already wrap this in try/catch.
+ */
 export function createClient() {
-    const cookieStore = cookies()
+    const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+    const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
 
-    const url = requirePublicEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const key = requirePublicEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-
-    if (process.env.NODE_ENV !== "production" && !didLogHost) {
-        try {
-            // eslint-disable-next-line no-console
-            console.info(`[supabase] server client using ${new URL(url).hostname}`);
-        } catch {
-            // ignore
-        }
-        didLogHost = true;
+    if (!url || !key || !/^https?:\/\//i.test(url)) {
+        // Build-time prerender with missing env vars — return null, don't crash.
+        return null;
     }
+
+    const cookieStore = cookies()
 
     return createServerClient(
         url,

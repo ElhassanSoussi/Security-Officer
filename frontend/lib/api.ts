@@ -33,6 +33,7 @@ export class ApiClient {
     private static async refreshAccessToken(): Promise<string | undefined> {
         try {
             const supabase = createClient();
+            if (!supabase) return undefined;
             const { data, error } = await supabase.auth.refreshSession();
             if (error) return undefined;
             return data.session?.access_token || undefined;

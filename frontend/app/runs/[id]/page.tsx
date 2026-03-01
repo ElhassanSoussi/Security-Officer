@@ -680,7 +680,8 @@ export default function RunDetailPage() {
                                                         if (newAns !== null && newAns !== audit.answer_text) {
                                                             import("@/utils/supabase/client").then(({ createClient }) => {
                                                                 const supabase = createClient();
-                                                                supabase.auth.getSession().then(({ data: { session } }) => {
+                                                                if (!supabase) return;
+                                                                supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
                                                                     ApiClient.updateAudit(run.id, audit.id, newAns, session?.access_token).then(() => {
                                                                         window.location.reload();
                                                                     });
