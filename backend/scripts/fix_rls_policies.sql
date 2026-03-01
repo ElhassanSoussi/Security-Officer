@@ -1,0 +1,9 @@
+-- DEPRECATED
+--
+-- This file previously created permissive RLS policies (including WITH CHECK (true))
+-- to unblock early prototyping. That is NOT appropriate for a paid SaaS.
+--
+-- Use this instead:
+--   backend/scripts/security_rls_migration.sql
+--
+-- Keeping this file only to avoid broken references in older docs/notes.

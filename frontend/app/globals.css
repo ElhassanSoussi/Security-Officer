@@ -1,0 +1,64 @@
+@import "../styles/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Mapped from design-system tokens ── */
+    --background: var(--color-bg);
+    --foreground: var(--color-text);
+
+    --card: var(--color-surface);
+    --card-foreground: var(--color-text);
+
+    --popover: var(--color-surface);
+    --popover-foreground: var(--color-text);
+
+    --primary: var(--color-primary);
+    --primary-foreground: var(--color-primary-fg);
+
+    --secondary: 220 12% 93%;
+    --secondary-foreground: 222.2 10% 12%;
+
+    --muted: var(--color-surface-alt);
+    --muted-foreground: var(--color-text-muted);
+
+    --accent: 222 10% 96%;
+    --accent-foreground: 222.2 12% 10%;
+
+    --destructive: var(--color-danger);
+    --destructive-foreground: 210 40% 98%;
+
+    --success: var(--color-success);
+    --warning: var(--color-warning);
+    --error: 0 78% 45%;
+
+    --border: var(--color-border);
+    --input: var(--color-border);
+    --ring: 230 72% 56%;
+
+    --radius: var(--radius-md);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* ── Utility classes for enterprise spacing ── */
+@layer utilities {
+  .page-padding {
+    @apply px-4 py-6 md:px-8 md:py-6;
+  }
+  .section-gap {
+    @apply space-y-6;
+  }
+}

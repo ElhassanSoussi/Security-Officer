@@ -1,0 +1,66 @@
+/*
+ * NYC Compliance Architect — Design System Tokens
+ *
+ * Single source of truth for colours, spacing, radii, shadows,
+ * and typography across the entire frontend.
+ *
+ * Convention: use CSS custom-properties so Tailwind can reference them
+ * via tailwind.config.ts `theme.extend`.  HSL triples (no function wrapper)
+ * are used for colours so Tailwind's opacity utilities keep working.
+ */
+
+:root {
+  /* ─── Colour Palette (HSL triples) ──────────────────────── */
+
+  /* Surfaces */
+  --color-bg:         220 20% 97%;      /* page background — soft blue-gray */
+  --color-surface:    0 0% 100%;        /* cards, modals */
+  --color-surface-alt: 220 14% 96%;     /* secondary surface (muted bg) */
+
+  /* Text */
+  --color-text:       220 10% 12%;      /* primary body text */
+  --color-text-muted: 215 10% 46%;      /* secondary / helper text */
+
+  /* Borders */
+  --color-border:     215 14% 90%;      /* default border */
+  --color-border-strong: 215 12% 82%;   /* emphasized border */
+
+  /* Brand / Primary — deep navy-indigo */
+  --color-primary:         230 60% 22%;
+  --color-primary-hover:   230 60% 18%;
+  --color-primary-fg:      210 40% 98%;
+
+  /* Semantic */
+  --color-success:    142 45% 32%;
+  --color-success-bg: 142 40% 95%;
+  --color-warning:    42 95% 45%;
+  --color-warning-bg: 42 80% 95%;
+  --color-danger:     0 78% 50%;
+  --color-danger-bg:  0 60% 97%;
+
+  /* ─── Border Radius ─────────────────────────────────────── */
+  --radius-sm:  0.25rem;   /* 4px */
+  --radius-md:  0.5rem;    /* 8px — default */
+  --radius-lg:  0.75rem;   /* 12px */
+
+  /* ─── Box Shadows ───────────────────────────────────────── */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md:  0 2px 6px -1px rgb(0 0 0 / 0.06), 0 1px 3px -1px rgb(0 0 0 / 0.04);
+
+  /* ─── Spacing Scale (px) ────────────────────────────────── */
+  --space-1:  0.25rem;  /*  4px */
+  --space-2:  0.5rem;   /*  8px */
+  --space-3:  0.75rem;  /* 12px */
+  --space-4:  1rem;     /* 16px */
+  --space-6:  1.5rem;   /* 24px */
+  --space-8:  2rem;     /* 32px */
+  --space-12: 3rem;     /* 48px */
+
+  /* ─── Typography Scale ──────────────────────────────────── */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.25rem;   /* 20px */
+  --text-2xl:  1.5rem;    /* 24px */
+}

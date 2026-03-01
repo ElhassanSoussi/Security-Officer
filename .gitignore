@@ -1,0 +1,83 @@
+# === Python ===
+venv/
+venv*/
+.venv/
+backend/venv*/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# === Environment files (NEVER commit secrets) ===
+.env
+.env.*
+.env.local
+.env.production
+.env.staging
+backend/.env
+frontend/.env.local
+!.env.example
+!**/.env*.example
+
+# local smoke test credentials (auto-generated)
+.smoke.env
+
+# === Secrets / Keys / Certs ===
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+
+# === OS / Editor ===
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# === Node / Frontend ===
+node_modules/
+.next/
+dist/
+out/
+
+# === Uploads (user-uploaded runtime artifacts) ===
+uploads/
+/uploads/
+
+# === Generated exports (runtime artifacts, never commit) ===
+backend/exports/
+exports/
+
+# === Excel files (generated artifacts) ===
+# NOTE: We ignore *.xlsx globally but whitelist the two intentional fixtures below.
+*.xlsx
+!backend/samples/sample_questionnaire.xlsx
+!backend/tests/fixtures/test_questionnaire.xlsx
+
+# === Logs ===
+*.log
+org_curl.log
+
+# === Build artifacts ===
+build/
+
+# === macOS copy artifacts (never commit) ===
+* 2.*
+* 2
+*copy*
+
+# === IDE / workspace (optional — keep local) ===
+.vscode/
+.idea/
+
+# === Test / coverage artifacts ===
+.pytest_cache/
+.coverage
+htmlcov/
+frontend/coverage/
+tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo

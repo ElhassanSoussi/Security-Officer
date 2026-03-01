@@ -1,0 +1,42 @@
+{
+    "manifest_version": 3,
+    "name": "NYC Compliance Architect",
+    "version": "1.0",
+    "description": "AI-powered compliance assistant for NYC PASSPort.",
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "*://passport.cityofnewyork.us/*",
+        "http://localhost:8000/*"
+    ],
+    "action": {
+        "default_title": "Open Compliance Sidebar"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://passport.cityofnewyork.us/*",
+                "*://*.nyc.gov/*",
+                "http://localhost:8000/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "sidebar.css"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "logo.png"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}

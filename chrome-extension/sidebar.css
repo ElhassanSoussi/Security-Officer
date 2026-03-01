@@ -1,0 +1,101 @@
+/* Tailwind-ish Styles */
+#nyc-compliance-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    background-color: #f8fafc;
+    /* slate-50 */
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+    z-index: 999999;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    border-left: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease-in-out;
+}
+
+#nyc-compliance-sidebar.hidden {
+    transform: translateX(100%);
+}
+
+.nyc-header {
+    padding: 1rem;
+    background-color: #1e293b;
+    /* slate-800 */
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nyc-title {
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.nyc-body {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.nyc-btn-primary {
+    background-color: #2563eb;
+    /* blue-600 */
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+.nyc-btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.nyc-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.nyc-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    /* slate-500 */
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.nyc-answer {
+    color: #1e293b;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+}
+
+.nyc-copy-btn {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.nyc-copy-btn:hover {
+    background-color: #e2e8f0;
+}

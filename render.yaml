@@ -1,0 +1,40 @@
+# render.yaml — Render Blueprint (Infrastructure as Code)
+# https://docs.render.com/blueprint-spec
+#
+# To use: push this file to the repo root, then in Render Dashboard
+# click "New → Blueprint" and connect the repo.
+
+services:
+  - type: web
+    name: nyc-compliance-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+    healthCheckPath: /health/ping
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "https://nyccompliancearchitect.com,https://www.nyccompliancearchitect.com"
+      - key: FRONTEND_URL
+        value: "https://nyccompliancearchitect.com"
+      - key: BILLING_ENABLED
+        value: "false"
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
