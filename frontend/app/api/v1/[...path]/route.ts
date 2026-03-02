@@ -10,9 +10,15 @@ function getBackendBaseUrl(): string {
     // BACKEND_INTERNAL_URL should be the Render backend origin, e.g.
     //   https://security-officer.onrender.com
     // It MUST NOT include /api/v1 — the proxy appends it below.
-    const configured = (
+    // Safety: strip trailing slashes AND any accidental /api/v1 suffix.
+    let configured = (
         process.env.BACKEND_INTERNAL_URL || "http://localhost:8000"
-    ).replace(/\/+$/, "");
+    ).trim().replace(/\/+$/, "");
+
+    // Auto-strip /api/v1 suffix if someone accidentally included it
+    if (/\/api\/v\d+$/i.test(configured)) {
+        configured = configured.replace(/\/api\/v\d+$/i, "");
+    }
 
     return configured;
 }
@@ -54,10 +60,18 @@ async function forward(request: NextRequest, path: string[]) {
         );
     }
 
-    const responseHeaders = new Headers(upstream.headers);
-    responseHeaders.delete("content-length");
+    // Buffer the upstream body instead of streaming. Streaming ReadableStream
+    // through Vercel serverless can produce "Decoding failed" when the body
+    // encoding (e.g. chunked transfer) doesn't survive the relay intact.
+    const body = await upstream.arrayBuffer();
 
-    return new NextResponse(upstream.body, {
+    const responseHeaders = new Headers(upstream.headers);
+    // Remove hop-by-hop / encoding headers that don't apply after buffering
+    responseHeaders.delete("content-encoding");
+    responseHeaders.delete("transfer-encoding");
+    responseHeaders.set("content-length", String(body.byteLength));
+
+    return new NextResponse(body, {
         status: upstream.status,
         headers: responseHeaders,
     });
