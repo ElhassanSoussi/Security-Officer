@@ -7,8 +7,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120; // seconds — analysis can take a while
 
 function getBackendBaseUrl(): string {
-    const configured = process.env.BACKEND_INTERNAL_URL || "http://localhost:8000";
-    return configured.replace(/\/+$/, "");
+    // BACKEND_INTERNAL_URL should be the Render backend origin, e.g.
+    //   https://security-officer.onrender.com
+    // It MUST NOT include /api/v1 — the proxy appends it below.
+    const configured = (
+        process.env.BACKEND_INTERNAL_URL || "http://localhost:8000"
+    ).replace(/\/+$/, "");
+
+    return configured;
 }
 
 async function forward(request: NextRequest, path: string[]) {
@@ -38,9 +44,12 @@ async function forward(request: NextRequest, path: string[]) {
     try {
         upstream = await fetch(upstreamUrl, init);
     } catch (err) {
-        console.error("[proxy] Backend unreachable:", err);
+        console.error(`[proxy] Backend unreachable at ${upstreamUrl}:`, err);
         return NextResponse.json(
-            { detail: "Backend API is unreachable. Verify backend is running on port 8000." },
+            {
+                detail: "Backend API is unreachable. Check BACKEND_INTERNAL_URL env var.",
+                target: process.env.NODE_ENV !== "production" ? upstreamUrl : undefined,
+            },
             { status: 502 }
         );
     }

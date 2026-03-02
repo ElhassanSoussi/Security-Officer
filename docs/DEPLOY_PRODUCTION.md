@@ -74,14 +74,14 @@ To use `api.nyccompliancearchitect.com`:
 
 ### Environment Variables
 
-| Variable | Value |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://<project>.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `NEXT_PUBLIC_API_URL` | `/api/v1` |
-| `BACKEND_INTERNAL_URL` | `https://nyc-compliance-api.onrender.com` (or `https://api.nyccompliancearchitect.com`) |
-| `NEXT_PUBLIC_APP_VERSION` | `1.0.0` |
-| `NEXT_PUBLIC_SITE_URL` | `https://nyccompliancearchitect.com` |
+| Variable | Value | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<project>.supabase.co` | ⚠️ NOT the Postgres connection string! Find in Supabase → Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Supabase → Settings → API → `anon` `public` |
+| `NEXT_PUBLIC_API_URL` | `/api/v1` | Keep as `/api/v1` — the proxy handles the rest |
+| `BACKEND_INTERNAL_URL` | `https://security-officer.onrender.com` | ⚠️ **REQUIRED** — without this, API calls return 404. NO `/api/v1` suffix! |
+| `NEXT_PUBLIC_APP_VERSION` | `1.0.0` | |
+| `NEXT_PUBLIC_SITE_URL` | `https://nyccompliancearchitect.com` | |
 
 > **`NEXT_PUBLIC_API_URL`** stays as `/api/v1` — the Next.js API route proxy
 > (`app/api/v1/[...path]/route.ts`) forwards requests server-side to
