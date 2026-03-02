@@ -16,6 +16,13 @@ PLAN_PRICE_MAP = {
 
 PRICE_TO_PLAN = {v: k for k, v in PLAN_PRICE_MAP.items() if v}
 
+# Plans page tier → Phase 19 plan name (used for subscriptions table + webhook19)
+TIER_TO_PLAN_NAME = {
+    "starter": "FREE",
+    "growth": "PRO",
+    "elite": "ENTERPRISE",
+}
+
 
 class BillingManager:
     @staticmethod
@@ -40,7 +47,11 @@ class BillingManager:
             "line_items": [{"price": price_id, "quantity": 1}],
             "success_url": success_url,
             "cancel_url": cancel_url,
-            "metadata": {"org_id": org_id, "plan_tier": plan_tier},
+            "metadata": {
+                "org_id": org_id,
+                "plan_tier": plan_tier,
+                "plan_name": TIER_TO_PLAN_NAME.get(plan_tier, plan_tier.upper()),
+            },
         }
 
         if existing_customer_id:
@@ -48,24 +59,25 @@ class BillingManager:
         elif customer_email:
             params["customer_email"] = customer_email
 
-            # Best-effort: write a pending subscriptions row so incoming webhooks
-            # can map the Stripe customer -> org. Don't fail the checkout on DB errors.
-            try:
-                admin_sb = get_supabase_admin()
-                from app.core.subscription import PLAN_DEFAULTS
+        # Best-effort: write a pending subscriptions row so incoming webhooks
+        # can map the Stripe customer -> org. Don't fail the checkout on DB errors.
+        try:
+            admin_sb = get_supabase_admin()
+            from app.core.subscription import PLAN_DEFAULTS
 
-                limits = PLAN_DEFAULTS.get(plan_tier.upper(), {})
-                pending = {
-                    "org_id": org_id,
-                    "plan_name": plan_tier.upper(),
-                    "stripe_status": "pending",
-                    "max_runs_per_month": limits.get("max_runs_per_month"),
-                    "max_documents": limits.get("max_documents"),
-                    "max_memory_entries": limits.get("max_memory_entries"),
-                }
-                admin_sb.table("subscriptions").upsert(pending, on_conflict="org_id").execute()
-            except Exception as e:
-                logger.warning("Failed to upsert pending subscription for org=%s: %s", org_id, str(e)[:120])
+            mapped_plan = TIER_TO_PLAN_NAME.get(plan_tier, plan_tier.upper())
+            limits = PLAN_DEFAULTS.get(mapped_plan, PLAN_DEFAULTS.get("FREE", {}))
+            pending = {
+                "org_id": org_id,
+                "plan_name": mapped_plan,
+                "stripe_status": "pending",
+                "max_runs_per_month": limits.get("max_runs_per_month"),
+                "max_documents": limits.get("max_documents"),
+                "max_memory_entries": limits.get("max_memory_entries"),
+            }
+            admin_sb.table("subscriptions").upsert(pending, on_conflict="org_id").execute()
+        except Exception as e:
+            logger.warning("Failed to upsert pending subscription for org=%s: %s", org_id, str(e)[:120])
 
         session = stripe.checkout.Session.create(**params)
         return session.url

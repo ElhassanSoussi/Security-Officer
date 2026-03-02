@@ -36,11 +36,19 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: STRIPE_PRICE_STARTER
+        sync: false
+      - key: STRIPE_PRICE_GROWTH
+        sync: false
+      - key: STRIPE_PRICE_ELITE
+        sync: false
       - key: STRIPE_PRICE_FREE
         sync: false
       - key: STRIPE_PRICE_PRO
         sync: false
       - key: STRIPE_PRICE_ENTERPRISE
         sync: false
+      - key: STRIPE_TRIAL_DAYS
+        value: "14"
       - key: SENTRY_DSN
         sync: false

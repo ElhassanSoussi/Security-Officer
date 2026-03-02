@@ -51,6 +51,14 @@ def _price_map() -> Dict[str, str]:
     }
 
 
+# Plans-page tier (starter/growth/elite) → Phase 19 plan name (FREE/PRO/ENTERPRISE)
+_TIER_TO_PLAN_NAME: Dict[str, str] = {
+    "starter": "FREE",
+    "growth": "PRO",
+    "elite": "ENTERPRISE",
+}
+
+
 def _price_to_plan() -> Dict[str, str]:
     """Reverse map: Stripe Price ID → plan_name."""
     return {v: k for k, v in _price_map().items() if v}
@@ -218,8 +226,13 @@ def _process_event(event: Dict[str, Any]) -> Dict[str, Any]:
 
 def _handle_checkout_completed(session_data: Dict[str, Any]) -> None:
     """checkout.session.completed → write active subscription to subscriptions table."""
-    org_id = (session_data.get("metadata") or {}).get("org_id")
-    plan_name = (session_data.get("metadata") or {}).get("plan_name", "PRO").upper()
+    metadata = session_data.get("metadata") or {}
+    org_id = metadata.get("org_id")
+    # Support both Phase 19 (plan_name) and Plans page (plan_tier) metadata keys
+    plan_name = metadata.get("plan_name", "").upper()
+    if not plan_name:
+        plan_tier = metadata.get("plan_tier", "").lower()
+        plan_name = _TIER_TO_PLAN_NAME.get(plan_tier, plan_tier.upper() or "PRO")
     customer_id: Optional[str] = session_data.get("customer")
     subscription_id: Optional[str] = session_data.get("subscription")
 
@@ -253,6 +266,22 @@ def _handle_checkout_completed(session_data: Dict[str, Any]) -> None:
             logger.warning("Failed to fetch Stripe subscription details: %s", e)
 
     _upsert_subscription(org_id, update)
+
+    # Dual-write: also update the organizations table (used by Plans page flow)
+    plan_tier = metadata.get("plan_tier", "").lower() or {v: k for k, v in _TIER_TO_PLAN_NAME.items()}.get(plan_name, "starter")
+    try:
+        org_update: Dict[str, Any] = {
+            "stripe_customer_id": customer_id,
+            "stripe_subscription_id": subscription_id,
+            "plan_tier": plan_tier,
+            "subscription_status": update.get("stripe_status", "active"),
+        }
+        if update.get("current_period_end"):
+            org_update["current_period_end"] = update["current_period_end"]
+        _admin_sb().table("organizations").update(org_update).eq("id", org_id).execute()
+    except Exception as e:
+        logger.warning("checkout.session.completed: failed to update organizations table: %s", str(e)[:120])
+
     logger.info("checkout.session.completed: org=%s plan=%s", org_id, plan_name)
 
 
