@@ -73,36 +73,38 @@ async function forward(request: NextRequest, path: string[]) {
     // encoding (e.g. chunked transfer) doesn't survive the relay intact.
     const body = await upstream.arrayBuffer();
 
-    // Detect Vercel Deployment Protection or other HTML auth gates.
-    // If the response is HTML (not JSON), the proxy likely hit a protection
-    // page rather than the actual backend. Return a clear JSON error.
-    const upstreamCt = (upstream.headers.get("content-type") || "").toLowerCase();
-    if (
-        upstream.status === 401 ||
-        upstream.status === 403 ||
-        (upstreamCt.includes("text/html") && !upstreamCt.includes("application/json"))
-    ) {
-        const bodyText = new TextDecoder().decode(body).slice(0, 500);
+    // Decode a text snippet to reliably detect HTML/error pages even when
+    // content-type headers are missing or misleading.
+    const bodyText = new TextDecoder().decode(body || new Uint8Array()).slice(0, 2000).trim();
+    const ct = (upstream.headers.get("content-type") || "").toLowerCase();
+
+    const looksLikeHtml = /^[\s\r\n]*</.test(bodyText) || ct.includes("text/html") || bodyText.toLowerCase().includes("<html") || bodyText.toLowerCase().includes("<!doctype");
+
+    if (looksLikeHtml) {
         const isDeployProtection =
             bodyText.includes("Deployment Protection") ||
             bodyText.includes("Authentication Required") ||
-            bodyText.includes("vercel.com");
-        if (isDeployProtection) {
-            console.error(
-                `[proxy] Vercel Deployment Protection blocked request to ${upstreamUrl}. ` +
-                `Disable it in Vercel → Settings → Deployment Protection, or promote to Production.`
-            );
-            return NextResponse.json(
-                {
-                    detail:
-                        "Vercel Deployment Protection is blocking API requests. " +
-                        "Disable it in Vercel → Settings → Deployment Protection, " +
-                        "or deploy to Production (not Preview).",
-                    error: "DEPLOYMENT_PROTECTION",
-                },
-                { status: 503 }
-            );
-        }
+            bodyText.includes("vercel.com") ||
+            bodyText.toLowerCase().includes("sign in to continue");
+
+        console.error(
+            `[proxy] Upstream returned HTML for ${upstreamUrl} (status=${upstream.status}). snippet=${bodyText.slice(0,200)}`
+        );
+
+        const payload = isDeployProtection
+            ? {
+                  detail:
+                      "Vercel Deployment Protection is blocking API requests. Disable it in Vercel → Settings → Deployment Protection, or deploy to Production.",
+                  error: "DEPLOYMENT_PROTECTION",
+              }
+            : {
+                  detail:
+                      "Upstream returned an HTML error page instead of JSON. Check BACKEND_INTERNAL_URL, backend health, and any network/app protection.",
+                  error: "UPSTREAM_HTML",
+              };
+
+        // Return JSON error to the frontend so it can handle gracefully.
+        return NextResponse.json(payload, { status: isDeployProtection ? 503 : 502 });
     }
 
     const responseHeaders = new Headers(upstream.headers);
