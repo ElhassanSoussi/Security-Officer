@@ -1,4 +1,5 @@
 import os
+import asyncio
 from fastapi import FastAPI, HTTPException, Request as FastAPIRequest
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -7,6 +8,14 @@ from starlette.responses import Response as StarletteResponse
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# Python 3.11+ behavior: ensure a default event loop exists for synchronous
+# code that calls asyncio.get_event_loop().run_until_complete(...) in tests.
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
 # ─── Phase 20 Part 6: Sentry error monitoring (opt-in via SENTRY_DSN) ─────────
 _sentry_initialized = False
