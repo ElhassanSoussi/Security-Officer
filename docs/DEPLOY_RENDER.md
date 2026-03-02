@@ -113,6 +113,36 @@ Set these in **Render Dashboard → Environment → Environment Variables**:
 
 > ⚠️ **CRITICAL:** In production (`ENVIRONMENT=production`), `ALLOWED_ORIGINS` **must** be set to explicit origins. Wildcard (`*`) is rejected. Empty value will log a warning.
 
+### Stripe (Billing) — required when `BILLING_ENABLED=true`
+
+When enabling billing you must set the following environment variables in Render (or your host):
+
+- `STRIPE_SECRET_KEY` — Your Stripe secret API key (server-side only; never expose in frontend).
+- `STRIPE_WEBHOOK_SECRET` — The webhook signing secret used to verify Stripe payloads.
+- `STRIPE_PRICE_FREE`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_ENTERPRISE` — Stripe Price IDs that map to the app plans.
+
+Testing webhooks locally / in a staging environment:
+
+1. Install the Stripe CLI (see Stripe docs: https://stripe.com/docs/stripe-cli).
+
+2. Forward events to your running backend; example (replace your-host):
+
+```bash
+stripe listen --forward-to "https://your-host/api/v1/billing/webhook19"
+```
+
+3. Trigger a test event (checkout.session.completed, customer.subscription.updated, invoice.payment_failed):
+
+```bash
+stripe trigger checkout.session.completed
+```
+
+Notes:
+
+- Ensure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are set in the same environment where the backend is running.
+- The frontend should only be configured with `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (publishable key) — never set secret keys on the frontend.
+- Billing endpoints return structured 503 errors when billing is disabled or not configured.
+
 ---
 
 ## 5. CORS Configuration

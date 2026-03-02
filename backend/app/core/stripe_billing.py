@@ -128,6 +128,25 @@ def create_checkout_session(
     elif customer_email:
         params["customer_email"] = customer_email
 
+    # Write a pending subscription row so the org is associated with this
+    # checkout attempt. This helps map the eventual Stripe customer → org in
+    # webhook handlers. Do not fail the checkout if the DB write errors.
+    try:
+        from app.core.subscription import PLAN_DEFAULTS
+
+        limits = PLAN_DEFAULTS.get(plan_name.upper(), PLAN_DEFAULTS["FREE"])
+        pending_record: Dict[str, Any] = {
+            "org_id": org_id,
+            "plan_name": plan_name.upper(),
+            "stripe_status": "pending",
+            "max_runs_per_month": limits.get("max_runs_per_month"),
+            "max_documents": limits.get("max_documents"),
+            "max_memory_entries": limits.get("max_memory_entries"),
+        }
+        _upsert_subscription(org_id, pending_record)
+    except Exception as e:
+        logger.warning("create_checkout_session: failed to upsert pending subscription for org=%s: %s", org_id, str(e)[:120])
+
     session = stripe.checkout.Session.create(**params)
     return session.url
 

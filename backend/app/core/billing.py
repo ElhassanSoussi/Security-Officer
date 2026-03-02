@@ -45,6 +45,25 @@ class BillingManager:
         elif customer_email:
             params["customer_email"] = customer_email
 
+            # Best-effort: write a pending subscriptions row so incoming webhooks
+            # can map the Stripe customer -> org. Don't fail the checkout on DB errors.
+            try:
+                admin_sb = get_supabase_admin()
+                from app.core.subscription import PLAN_DEFAULTS
+
+                limits = PLAN_DEFAULTS.get(plan_tier.upper(), {})
+                pending = {
+                    "org_id": org_id,
+                    "plan_name": plan_tier.upper(),
+                    "stripe_status": "pending",
+                    "max_runs_per_month": limits.get("max_runs_per_month"),
+                    "max_documents": limits.get("max_documents"),
+                    "max_memory_entries": limits.get("max_memory_entries"),
+                }
+                admin_sb.table("subscriptions").upsert(pending, on_conflict="org_id").execute()
+            except Exception as e:
+                print(f"⚠️ Failed to upsert pending subscription: {e}")
+
         session = stripe.checkout.Session.create(**params)
         return session.url
 
