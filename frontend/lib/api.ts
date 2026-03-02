@@ -84,6 +84,30 @@ export class ApiClient {
             throw new Error("API connection failed. Backend may be offline.");
         }
 
+        // Guard: detect HTML responses (e.g. Vercel Deployment Protection auth page)
+        // before attempting JSON parse, to produce a clear error instead of "Decoding failed".
+        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+        if (
+            contentType.includes("text/html") &&
+            !contentType.includes("application/json")
+        ) {
+            const htmlSnippet = (await res.clone().text()).slice(0, 500);
+            const isDeployProtection =
+                htmlSnippet.includes("Deployment Protection") ||
+                htmlSnippet.includes("Authentication Required") ||
+                htmlSnippet.includes("vercel.com");
+            if (isDeployProtection) {
+                throw new Error(
+                    "API Error: Vercel Deployment Protection is blocking requests. " +
+                    "Ask the admin to disable it or deploy to Production."
+                );
+            }
+            throw new Error(
+                `API Error: Expected JSON but received HTML (${res.status} ${res.statusText}). ` +
+                "The backend may be misconfigured or unreachable."
+            );
+        }
+
         // Transient backend failures: retry safe GETs with exponential backoff.
         // Do not retry known product-state errors (e.g. billing disabled) because
         // they are deterministic and retries only create noise.

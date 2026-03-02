@@ -32,6 +32,14 @@ async function forward(request: NextRequest, path: string[]) {
     headers.delete("connection");
     headers.delete("accept-encoding");
 
+    // If VERCEL_AUTOMATION_BYPASS_SECRET is configured, include the bypass
+    // header so that Vercel Deployment Protection doesn't block server-side
+    // proxy requests on Preview deployments.
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    if (bypassSecret) {
+        headers.set("x-vercel-protection-bypass", bypassSecret);
+    }
+
     const init: RequestInit = {
         method: request.method,
         headers,
@@ -64,6 +72,38 @@ async function forward(request: NextRequest, path: string[]) {
     // through Vercel serverless can produce "Decoding failed" when the body
     // encoding (e.g. chunked transfer) doesn't survive the relay intact.
     const body = await upstream.arrayBuffer();
+
+    // Detect Vercel Deployment Protection or other HTML auth gates.
+    // If the response is HTML (not JSON), the proxy likely hit a protection
+    // page rather than the actual backend. Return a clear JSON error.
+    const upstreamCt = (upstream.headers.get("content-type") || "").toLowerCase();
+    if (
+        upstream.status === 401 ||
+        upstream.status === 403 ||
+        (upstreamCt.includes("text/html") && !upstreamCt.includes("application/json"))
+    ) {
+        const bodyText = new TextDecoder().decode(body).slice(0, 500);
+        const isDeployProtection =
+            bodyText.includes("Deployment Protection") ||
+            bodyText.includes("Authentication Required") ||
+            bodyText.includes("vercel.com");
+        if (isDeployProtection) {
+            console.error(
+                `[proxy] Vercel Deployment Protection blocked request to ${upstreamUrl}. ` +
+                `Disable it in Vercel → Settings → Deployment Protection, or promote to Production.`
+            );
+            return NextResponse.json(
+                {
+                    detail:
+                        "Vercel Deployment Protection is blocking API requests. " +
+                        "Disable it in Vercel → Settings → Deployment Protection, " +
+                        "or deploy to Production (not Preview).",
+                    error: "DEPLOYMENT_PROTECTION",
+                },
+                { status: 503 }
+            );
+        }
+    }
 
     const responseHeaders = new Headers(upstream.headers);
     // Remove hop-by-hop / encoding headers that don't apply after buffering

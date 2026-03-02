@@ -93,6 +93,34 @@ To use `api.nyccompliancearchitect.com`:
 2. Add DNS records per Vercel's instructions (A record + CNAME for www).
 3. Enable "Redirect www to apex" or vice versa.
 
+### ⚠️ Deployment Protection (CRITICAL)
+
+Vercel's **Deployment Protection** can block server-side API proxy calls on
+Preview deployments, returning an HTML auth page instead of proxying to the
+backend. Symptoms: "Decoding failed", "Failed to load dashboard data",
+`401` HTML responses from `/api/v1/*` endpoints.
+
+**Fix — choose one:**
+
+1. **Disable for Preview** (simplest):
+   Vercel → Project → Settings → Deployment Protection →
+   set "Standard Protection" **or** toggle off "Vercel Authentication" for
+   Preview deployments.
+
+2. **Use Production deployments only**:
+   Assign the custom domain (`nyccompliancearchitect.com`) so pushes to
+   `main` go to the Production environment, which does not have this
+   protection by default.
+
+3. **Protection Bypass for Automation** (advanced):
+   Vercel → Project → Settings → Deployment Protection →
+   "Protection Bypass for Automation" → generate a secret. Then set
+   env var `VERCEL_AUTOMATION_BYPASS_SECRET` and send the header
+   `x-vercel-protection-bypass: <secret>` on server-side requests.
+
+> **Recommendation:** Once the custom domain is live, deploy to **Production**
+> and the issue disappears. For Preview testing, option 1 is fastest.
+
 ---
 
 ## 3. Supabase
