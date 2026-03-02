@@ -9,12 +9,21 @@ import { cookies } from 'next/headers'
  * page) already wrap this in try/catch.
  */
 export function createClient() {
-    const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+    let url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
     const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
 
-    if (!url || !key || !/^https?:\/\//i.test(url)) {
-        // Build-time prerender with missing env vars — return null, don't crash.
+    if (!url || !key) {
         return null;
+    }
+
+    // Auto-fix: Postgres connection string pasted instead of API URL
+    if (!/^https?:\/\//i.test(url)) {
+        const pgMatch = url.match(/db\.([a-z0-9]+)\.supabase\.co/i);
+        if (pgMatch) {
+            url = `https://${pgMatch[1]}.supabase.co`;
+        } else {
+            return null;
+        }
     }
 
     const cookieStore = cookies()
@@ -30,7 +39,7 @@ export function createClient() {
                 set(name: string, value: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value, ...options })
-                    } catch (error) {
+                    } catch {
                         // The `set` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing
                         // user sessions.
@@ -39,7 +48,7 @@ export function createClient() {
                 remove(name: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value: '', ...options })
-                    } catch (error) {
+                    } catch {
                         // The `delete` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing
                         // user sessions.

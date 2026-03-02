@@ -36,6 +36,37 @@ function readEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_K
 }
 
 /**
+ * Attempt to normalise a Supabase URL.
+ *
+ * Common misconfiguration: pasting the Postgres connection string
+ * (postgresql://…@db.<ref>.supabase.co:5432/postgres) instead of the
+ * Supabase API URL (https://<ref>.supabase.co).
+ *
+ * This function detects that pattern and extracts the correct API URL.
+ */
+function normaliseSupabaseUrl(raw: string): { url: string; wasFixed: boolean } {
+    // Already correct
+    if (/^https?:\/\//i.test(raw)) {
+        return { url: raw, wasFixed: false };
+    }
+
+    // Detect Postgres connection string: postgresql://…@db.<ref>.supabase.co…
+    const pgMatch = raw.match(/db\.([a-z0-9]+)\.supabase\.co/i);
+    if (pgMatch) {
+        const ref = pgMatch[1];
+        const fixed = `https://${ref}.supabase.co`;
+        console.warn(
+            `[supabase] NEXT_PUBLIC_SUPABASE_URL looks like a Postgres connection string. ` +
+            `Auto-correcting to "${fixed}". Please fix the env var in your Vercel dashboard.`
+        );
+        return { url: fixed, wasFixed: true };
+    }
+
+    // Unrecognised — return as-is; validation downstream will reject it.
+    return { url: raw, wasFixed: false };
+}
+
+/**
  * Return a Supabase browser client, or `null` when the required env vars are
  * missing / invalid.  Safe to call at the top of any "use client" component —
  * it will never throw and will never create a client during SSR.
@@ -57,10 +88,10 @@ export function createClient(): SupabaseBrowserClient | null {
     if (_initError !== null) return null; // already failed once — don't retry
 
     // ── Validate env vars ────────────────────────────────────────────────
-    const url = readEnv("NEXT_PUBLIC_SUPABASE_URL");
+    const rawUrl = readEnv("NEXT_PUBLIC_SUPABASE_URL");
     const key = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
-    if (!url) {
+    if (!rawUrl) {
         _initError = "Missing env var: NEXT_PUBLIC_SUPABASE_URL. Set it in your Vercel dashboard or .env.local.";
         console.error(`[supabase] ${_initError}`);
         return null;
@@ -70,10 +101,23 @@ export function createClient(): SupabaseBrowserClient | null {
         console.error(`[supabase] ${_initError}`);
         return null;
     }
+
+    // Normalise: auto-fix common Postgres-connection-string mistake
+    const { url, wasFixed } = normaliseSupabaseUrl(rawUrl);
+
     if (!/^https?:\/\//i.test(url)) {
-        _initError = `Invalid NEXT_PUBLIC_SUPABASE_URL: "${url}" — must start with http:// or https://.`;
+        _initError =
+            `Invalid NEXT_PUBLIC_SUPABASE_URL — must start with https://. ` +
+            `You appear to have set a Postgres connection string instead of the Supabase API URL. ` +
+            `Go to your Supabase dashboard → Project Settings → API → "Project URL" and copy that value ` +
+            `(it looks like https://xxxx.supabase.co). ` +
+            `Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, then restart Next.js.`;
         console.error(`[supabase] ${_initError}`);
         return null;
+    }
+
+    if (wasFixed) {
+        _initError = null; // Clear — we auto-recovered
     }
 
     // ── Create & cache ───────────────────────────────────────────────────

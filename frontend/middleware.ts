@@ -20,7 +20,8 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   );
 
   // Content Security Policy
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const rawSupabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const supabaseCspUrl = normaliseSupabaseUrl(rawSupabaseUrl) || "";
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
   const isProd = process.env.NODE_ENV === "production";
   const connectExtra = isProd
@@ -32,7 +33,7 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-    `connect-src 'self' ${supabaseUrl} https://*.supabase.co wss://*.supabase.co ${apiOrigin} ${connectExtra}`
+    `connect-src 'self' ${supabaseCspUrl} https://*.supabase.co wss://*.supabase.co ${apiOrigin} ${connectExtra}`
       .replace(/\s+/g, " ")
       .trim(),
     "img-src 'self' data: blob:",
@@ -53,6 +54,16 @@ function hasAuthCookie(request: NextRequest): boolean {
   // (plus chunked variants `sb-<ref>-auth-token.0`, `.1`, …).
   const allCookies = request.cookies.getAll();
   return allCookies.some((c) => /^sb-.+-auth-token/.test(c.name));
+}
+
+/**
+ * Normalise NEXT_PUBLIC_SUPABASE_URL — auto-fix common mistake where the
+ * Postgres connection string is pasted instead of the Supabase API URL.
+ */
+function normaliseSupabaseUrl(raw: string): string | null {
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const pgMatch = raw.match(/db\.([a-z0-9]+)\.supabase\.co/i);
+  return pgMatch ? `https://${pgMatch[1]}.supabase.co` : null;
 }
 
 const PUBLIC_PREFIXES = [
@@ -81,10 +92,11 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
 
     // ── Fast path: env vars missing → pass through ────────────────
-    if (
-      !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
-    ) {
+    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+    const supabaseApiUrl = rawUrl ? normaliseSupabaseUrl(rawUrl) : null;
+
+    if (!supabaseApiUrl || !anonKey) {
       return applySecurityHeaders(NextResponse.next());
     }
 
@@ -104,8 +116,8 @@ export async function middleware(request: NextRequest) {
       });
 
       const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseApiUrl,
+        anonKey,
         {
           cookies: {
             get(name: string) {
