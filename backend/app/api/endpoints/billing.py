@@ -14,12 +14,12 @@ from pydantic import BaseModel
 logger = logging.getLogger("api.billing")
 
 router = APIRouter()
-WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET") or getattr(get_settings(), "STRIPE_WEBHOOK_SECRET", "")
 security = HTTPBearer()
 settings = get_settings()
 
 _BILLING_ENABLED = bool(getattr(settings, "BILLING_ENABLED", False))
-_BILLING_CONFIGURED = _BILLING_ENABLED and bool(os.getenv("STRIPE_SECRET_KEY"))
+_BILLING_CONFIGURED = _BILLING_ENABLED and bool(getattr(settings, "STRIPE_SECRET_KEY", "") or os.getenv("STRIPE_SECRET_KEY"))
 _warned_no_stripe = False
 
 def _billing_fallback(org_id: str | None = None) -> Dict[str, Any]:

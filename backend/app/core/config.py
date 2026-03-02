@@ -177,4 +177,24 @@ def get_settings():
         settings.docs_enabled,
         bool(settings.SENTRY_DSN),
     )
+
+    # ── Export Stripe settings to os.environ ────────────────────────────────
+    # pydantic-settings reads .env files but does NOT inject into os.environ.
+    # Many billing modules use os.getenv("STRIPE_*") — sync them here so
+    # everything works consistently in local dev AND production.
+    _stripe_exports = {
+        "STRIPE_SECRET_KEY": settings.STRIPE_SECRET_KEY,
+        "STRIPE_WEBHOOK_SECRET": settings.STRIPE_WEBHOOK_SECRET,
+        "STRIPE_PRICE_FREE": settings.STRIPE_PRICE_FREE,
+        "STRIPE_PRICE_PRO": settings.STRIPE_PRICE_PRO,
+        "STRIPE_PRICE_ENTERPRISE": settings.STRIPE_PRICE_ENTERPRISE,
+        "STRIPE_PRICE_STARTER": settings.STRIPE_PRICE_STARTER,
+        "STRIPE_PRICE_GROWTH": settings.STRIPE_PRICE_GROWTH,
+        "STRIPE_PRICE_ELITE": settings.STRIPE_PRICE_ELITE,
+        "BILLING_ENABLED": str(settings.BILLING_ENABLED).lower(),
+    }
+    for _k, _v in _stripe_exports.items():
+        if _v and not os.getenv(_k):
+            os.environ[_k] = _v
+
     return settings
