@@ -285,14 +285,19 @@ def list_plans(
                         normalized.append(dict(d))
 
                 normalized.sort(key=lambda x: int(x.get("price_cents") or 0))
+                # Inject billing state hint for frontend
+                for row in normalized:
+                    row["billing_enabled"] = _BILLING_ENABLED
+                    row["billing_configured"] = _BILLING_CONFIGURED
                 return normalized
     except Exception:
         pass
 
     # Include billing state hint for frontend.
-    plans = DEFAULT_PLANS
+    plans = [dict(p) for p in DEFAULT_PLANS]
     for p in plans:
-        p.setdefault("billing_enabled", _BILLING_ENABLED)
+        p["billing_enabled"] = _BILLING_ENABLED
+        p["billing_configured"] = _BILLING_CONFIGURED
     return plans
 
 

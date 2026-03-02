@@ -8,7 +8,7 @@
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_customer_id     text;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_status           text
-    CHECK (stripe_status IN ('active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete'));
+    CHECK (stripe_status IN ('active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete', 'pending'));
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_period_end      timestamptz;
 
 -- 2. Index: fast lookup by stripe_customer_id (used by webhook handlers)

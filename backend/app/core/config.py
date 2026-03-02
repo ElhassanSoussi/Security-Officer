@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     STRIPE_PRICE_FREE: str = ""
     STRIPE_PRICE_PRO: str = ""
     STRIPE_PRICE_ENTERPRISE: str = ""
+    # Plans page: Price IDs for Starter/Growth/Elite plan names
+    STRIPE_PRICE_STARTER: str = ""
+    STRIPE_PRICE_GROWTH: str = ""
+    STRIPE_PRICE_ELITE: str = ""
     # Trial period in days for new PRO subscriptions
     STRIPE_TRIAL_DAYS: int = 14
     
@@ -145,7 +149,14 @@ def get_settings():
         if not settings.STRIPE_SECRET_KEY or "your-" in settings.STRIPE_SECRET_KEY:
             raise ValueError("CRITICAL ERROR: STRIPE_SECRET_KEY required when BILLING_ENABLED=true")
         if not settings.STRIPE_WEBHOOK_SECRET or "your-" in settings.STRIPE_WEBHOOK_SECRET:
-            raise ValueError("CRITICAL ERROR: STRIPE_WEBHOOK_SECRET required when BILLING_ENABLED=true")
+            if settings.is_production:
+                raise ValueError("CRITICAL ERROR: STRIPE_WEBHOOK_SECRET required when BILLING_ENABLED=true in production")
+            else:
+                import logging as _log
+                _log.getLogger("app.config").warning(
+                    "STRIPE_WEBHOOK_SECRET not set — webhook endpoint will return 503. "
+                    "Run `stripe listen --forward-to http://localhost:8000/api/v1/billing/webhook19` to get one."
+                )
     
     # Phase 20: Production-specific validations
     if settings.is_production:
