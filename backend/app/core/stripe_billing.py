@@ -154,10 +154,15 @@ def create_checkout_session(
 # ─── Webhook Handling ─────────────────────────────────────────────────────────
 
 def handle_webhook_event(payload: bytes, sig_header: str) -> Dict[str, Any]:
-    """
-    Validate Stripe webhook signature and dispatch to typed handlers.
-    Returns {"status": "handled", "type": event_type} on success.
-    Raises HTTPException 400 on invalid payload or signature.
+    # Delegate to helpers: construct_event + process_event
+    event = _construct_event(payload, sig_header)
+    return _process_event(event)
+
+
+def _construct_event(payload: bytes, sig_header: str) -> Dict[str, Any]:
+    """Validate Stripe webhook signature and return the parsed event dict.
+
+    Raises HTTPException 503 when webhook secret missing, 400 on invalid signature/payload.
     """
     secret = _webhook_secret()
     if not secret:
@@ -167,31 +172,44 @@ def handle_webhook_event(payload: bytes, sig_header: str) -> Dict[str, Any]:
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, secret)
+        return event
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature")
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid webhook payload")
 
-    event_type: str = event["type"]
-    event_data: Dict[str, Any] = event["data"]["object"]
+
+def _process_event(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Process a parsed Stripe event dict: log idempotently and dispatch to handlers.
+
+    Returns a simple result dict. Designed to be safe to call in background tasks.
+    """
+    event_type: str = event.get("type", "unknown")
+    event_data: Dict[str, Any] = event.get("data", {}).get("object", {})
     event_id: str = event.get("id", "unknown")
 
     logger.info("Stripe webhook received: type=%s id=%s", event_type, event_id)
 
     # Idempotency: log event first (upsert on stripe_event_id)
-    _log_billing_event(event_id, event_type, event_data)
+    try:
+        _log_billing_event(event_id, event_type, event_data)
+    except Exception:
+        logger.warning("Failed to log billing event %s", event_id)
 
-    # Dispatch
-    if event_type == "checkout.session.completed":
-        _handle_checkout_completed(event_data)
-    elif event_type in ("customer.subscription.created", "customer.subscription.updated"):
-        _handle_subscription_updated(event_data)
-    elif event_type == "customer.subscription.deleted":
-        _handle_subscription_deleted(event_data)
-    elif event_type == "invoice.payment_failed":
-        _handle_payment_failed(event_data)
-    else:
-        logger.debug("Unhandled Stripe event type: %s", event_type)
+    # Dispatch to typed handlers
+    try:
+        if event_type == "checkout.session.completed":
+            _handle_checkout_completed(event_data)
+        elif event_type in ("customer.subscription.created", "customer.subscription.updated"):
+            _handle_subscription_updated(event_data)
+        elif event_type == "customer.subscription.deleted":
+            _handle_subscription_deleted(event_data)
+        elif event_type == "invoice.payment_failed":
+            _handle_payment_failed(event_data)
+        else:
+            logger.debug("Unhandled Stripe event type: %s", event_type)
+    except Exception as e:
+        logger.warning("Error processing Stripe event %s: %s", event_id, str(e)[:200])
 
     return {"status": "handled", "type": event_type}
 
