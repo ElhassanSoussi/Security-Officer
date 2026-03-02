@@ -6,7 +6,7 @@ import { DevBanner } from "@/components/ui/DevBanner";
 import { PlanLimitModal } from "@/components/PlanLimitModal";
 import { SubscriptionInactiveModal } from "@/components/SubscriptionInactiveModal";
 import { SentryInit } from "@/components/SentryInit";
-
+import { Analytics } from "@vercel/analytics/next";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 export const metadata: Metadata = {
@@ -64,6 +64,7 @@ export default function RootLayout({
                     <SubscriptionInactiveModal />
                     <SentryInit />
                 </ToastProvider>
+                <Analytics />
             </body>
         </html>
     );
