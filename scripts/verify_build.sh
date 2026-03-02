@@ -123,6 +123,59 @@ else
     pass "No obvious hardcoded secrets in source"
 fi
 
+# ── 4b. Stripe secret leak guard ─────────────────────────────
+echo ""
+echo "── Stripe Secret Leak Guard ─────────────────────────"
+
+# Fail build if any Stripe secret env vars appear in frontend code or config.
+# Only NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is allowed in the frontend.
+STRIPE_LEAK=false
+
+# Check for secret key references in frontend source code
+for secret_pattern in "STRIPE_SECRET_KEY" "STRIPE_WEBHOOK_SECRET" "sk_live_" "sk_test_" "whsec_"; do
+    if grep -rn "$secret_pattern" frontend/app/ frontend/lib/ frontend/components/ frontend/hooks/ frontend/utils/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v "\.example" | grep -v "// " | grep -v "* " | head -3 | grep -q .; then
+        fail "Stripe secret pattern '${secret_pattern}' found in frontend source code!"
+        STRIPE_LEAK=true
+    fi
+done
+
+# Check that frontend env files don't contain secret keys
+for envfile in frontend/.env.local frontend/.env frontend/.env.production frontend/.env.staging; do
+    if [[ -f "$envfile" ]]; then
+        if grep -qE "(STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|sk_live_|sk_test_|whsec_)" "$envfile" 2>/dev/null; then
+            fail "Stripe secret found in ${envfile} — remove immediately!"
+            STRIPE_LEAK=true
+        fi
+    fi
+done
+
+# Check that docker-compose and Dockerfile don't pass secrets to frontend
+if grep -A5 "frontend:" docker-compose.prod.yml 2>/dev/null | grep -qE "STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET"; then
+    fail "Stripe secret env var mapped to frontend service in docker-compose.prod.yml!"
+    STRIPE_LEAK=true
+fi
+
+if grep -qE "STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET" frontend/Dockerfile 2>/dev/null; then
+    fail "Stripe secret env var referenced in frontend/Dockerfile!"
+    STRIPE_LEAK=true
+fi
+
+# Check for NEXT_PUBLIC_ prefix on secret keys (should never happen)
+for envfile in frontend/.env.example frontend/.env.local.example frontend/.env.local frontend/.env frontend/.env.production; do
+    if [[ -f "$envfile" ]]; then
+        if grep -qE "NEXT_PUBLIC_STRIPE_SECRET_KEY|NEXT_PUBLIC_STRIPE_WEBHOOK_SECRET" "$envfile" 2>/dev/null; then
+            fail "NEXT_PUBLIC_ prefix used on Stripe secret in ${envfile} — this exposes secrets to the browser!"
+            STRIPE_LEAK=true
+        fi
+    fi
+done
+
+if $STRIPE_LEAK; then
+    fail "Stripe secret leak detected — fix before deploying!"
+else
+    pass "No Stripe secrets leaked to frontend"
+fi
+
 # ── 5. Health endpoint ───────────────────────────────────
 echo ""
 echo "── Health Endpoint ──────────────────────────────────"

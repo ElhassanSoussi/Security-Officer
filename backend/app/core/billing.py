@@ -1,6 +1,9 @@
+import logging
 import stripe
 import os
 from app.core.database import get_supabase_admin
+
+logger = logging.getLogger("billing.manager")
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -62,7 +65,7 @@ class BillingManager:
                 }
                 admin_sb.table("subscriptions").upsert(pending, on_conflict="org_id").execute()
             except Exception as e:
-                print(f"⚠️ Failed to upsert pending subscription: {e}")
+                logger.warning("Failed to upsert pending subscription for org=%s: %s", org_id, str(e)[:120])
 
         session = stripe.checkout.Session.create(**params)
         return session.url
@@ -86,7 +89,7 @@ class BillingManager:
                 return False, "Export limit reached. Please upgrade your plan."
             return True, None
         except Exception as e:
-            print(f"⚠️ Billing Check Failed: {e}")
+            logger.warning("Billing check failed for org=%s: %s", org_id, str(e)[:120])
             return True, "Billing check bypassed"
 
     @staticmethod
@@ -107,7 +110,7 @@ class BillingManager:
         subscription_id = session_data.get("subscription")
 
         if not org_id:
-            print("⚠️ checkout.session.completed missing org_id in metadata")
+            logger.warning("checkout.session.completed missing org_id in metadata")
             return
 
         update_data = {
@@ -124,10 +127,10 @@ class BillingManager:
                 update_data["current_period_start"] = _ts_to_iso(sub.current_period_start)
                 update_data["current_period_end"] = _ts_to_iso(sub.current_period_end)
             except Exception as e:
-                print(f"⚠️ Failed to fetch subscription details: {e}")
+                logger.warning("Failed to fetch subscription details: %s", str(e)[:120])
 
         admin_sb.table("organizations").update(update_data).eq("id", org_id).execute()
-        print(f"✅ Checkout completed: org={org_id} plan={plan_tier}")
+        logger.info("checkout.session.completed: org=%s plan=%s", org_id, plan_tier)
 
     @staticmethod
     def handle_subscription_updated(sub_data: dict) -> None:
@@ -160,9 +163,9 @@ class BillingManager:
         if res.data:
             org_id = res.data[0]["id"]
             admin_sb.table("organizations").update(update_data).eq("id", org_id).execute()
-            print(f"✅ Subscription updated: org={org_id} plan={plan_tier} status={status}")
+            logger.info("subscription.updated: org=%s plan=%s status=%s", org_id, plan_tier, status)
         else:
-            print(f"⚠️ No org found for stripe_customer_id={customer_id}")
+            logger.warning("subscription.updated: no org found for customer=%s", customer_id)
 
     @staticmethod
     def handle_subscription_deleted(sub_data: dict) -> None:
@@ -182,7 +185,7 @@ class BillingManager:
                 "subscription_status": "canceled",
                 "stripe_subscription_id": None,
             }).eq("id", org_id).execute()
-            print(f"✅ Subscription canceled: org={org_id} → starter")
+            logger.info("subscription.deleted: org=%s → starter", org_id)
 
     @staticmethod
     def log_billing_event(org_id: str | None, event_id: str, event_type: str, payload: dict) -> None:
@@ -196,7 +199,7 @@ class BillingManager:
                 "raw_payload": payload,
             }, on_conflict="stripe_event_id").execute()
         except Exception as e:
-            print(f"⚠️ Failed to log billing event: {e}")
+            logger.warning("Failed to log billing event %s: %s", event_id, str(e)[:120])
 
 
 def _ts_to_iso(ts) -> str | None:

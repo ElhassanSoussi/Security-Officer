@@ -6,9 +6,12 @@ from app.core.auth import get_current_user, require_user_id
 from app.core.org_context import parse_uuid, resolve_org_id_for_user
 from app.core.error_handler import APIError
 from app.core.config import get_settings
+import logging
 import os
 from typing import Any, Dict, List
 from pydantic import BaseModel
+
+logger = logging.getLogger("api.billing")
 
 router = APIRouter()
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -56,7 +59,7 @@ def _ensure_billing_configured():
     if not _BILLING_CONFIGURED:
         if not _warned_no_stripe:
             _warned_no_stripe = True
-            print("⚠️ Stripe not configured; billing endpoints will return 503.")
+            logger.warning("Stripe not configured; billing endpoints will return 503.")
         raise APIError(status_code=503, error="billing_not_configured", message="Billing is not configured")
 
 
@@ -168,7 +171,7 @@ async def stripe_webhook(request: Request):
     elif event_type == "customer.subscription.deleted":
         billing_manager.handle_subscription_deleted(event_data)
     else:
-        print(f"ℹ️ Unhandled Stripe event: {event_type}")
+        logger.debug("Unhandled Stripe event: %s", event_type)
 
     return {"status": "success"}
 

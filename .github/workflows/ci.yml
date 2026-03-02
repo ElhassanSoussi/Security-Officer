@@ -87,11 +87,75 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder-anon-key"
           NEXT_PUBLIC_API_URL: "http://localhost:8000/api/v1"
 
+  # ── Secret Leak Guard ─────────────────────────────────────────────────────────
+  secret-leak-guard:
+    name: Stripe Secret Leak Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Stripe secrets in frontend code
+        run: |
+          echo "🔒 Scanning frontend for leaked Stripe secrets..."
+          LEAKED=0
+
+          for pattern in "STRIPE_SECRET_KEY" "STRIPE_WEBHOOK_SECRET" "sk_live_" "sk_test_" "whsec_"; do
+            if grep -rn "$pattern" \
+                frontend/app/ frontend/lib/ frontend/components/ \
+                frontend/hooks/ frontend/utils/ \
+                --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+                2>/dev/null | grep -v '\.example' | head -5 | grep -q .; then
+              echo "❌ FAIL: Pattern '${pattern}' found in frontend source!"
+              grep -rn "$pattern" \
+                frontend/app/ frontend/lib/ frontend/components/ \
+                frontend/hooks/ frontend/utils/ \
+                --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+                2>/dev/null | grep -v '\.example' | head -5
+              LEAKED=1
+            fi
+          done
+
+          # Ensure no NEXT_PUBLIC_ prefix on secret keys
+          if grep -rn "NEXT_PUBLIC_STRIPE_SECRET_KEY\|NEXT_PUBLIC_STRIPE_WEBHOOK_SECRET" \
+              frontend/ --include="*.ts" --include="*.tsx" --include="*.env*" \
+              2>/dev/null | grep -v '\.example' | head -5 | grep -q .; then
+            echo "❌ FAIL: NEXT_PUBLIC_ prefix used on Stripe secret key!"
+            LEAKED=1
+          fi
+
+          # Ensure docker-compose doesn't map secrets to frontend
+          if grep -A10 "frontend:" docker-compose.prod.yml 2>/dev/null \
+              | grep -qE "STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET"; then
+            echo "❌ FAIL: Stripe secret mapped to frontend in docker-compose.prod.yml!"
+            LEAKED=1
+          fi
+
+          # Ensure frontend Dockerfile doesn't reference secrets
+          if grep -qE "STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET" frontend/Dockerfile 2>/dev/null; then
+            echo "❌ FAIL: Stripe secret referenced in frontend/Dockerfile!"
+            LEAKED=1
+          fi
+
+          if [ "$LEAKED" -eq 0 ]; then
+            echo "✅ PASS: No Stripe secrets leaked to frontend"
+          else
+            echo ""
+            echo "══════════════════════════════════════════════════════════════"
+            echo "  FAILED: Stripe secrets detected in frontend code/config!"
+            echo "  Only NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is allowed."
+            echo "══════════════════════════════════════════════════════════════"
+            exit 1
+          fi
+
+      - name: Run secrets scanner
+        run: bash scripts/scan_secrets.sh || true
+
   # ── Docker Build Validation ──────────────────────────────────────────────────
   docker-build:
     name: Docker Build Check
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-checks]
+    needs: [backend-tests, frontend-checks, secret-leak-guard]
 
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +169,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SUPABASE_URL="https://placeholder.supabase.co" \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="placeholder" \
             --build-arg NEXT_PUBLIC_API_URL="http://localhost:8000/api/v1" \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="" \
             -t compliance-frontend:ci ./frontend
 
   # ── Staging Deploy Placeholder ───────────────────────────────────────────────
