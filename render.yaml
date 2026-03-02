@@ -31,7 +31,7 @@ services:
       - key: FRONTEND_URL
         value: "https://nyccompliancearchitect.com"
       - key: BILLING_ENABLED
-        value: "false"
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

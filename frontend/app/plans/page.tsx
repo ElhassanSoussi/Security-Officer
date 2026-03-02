@@ -213,7 +213,7 @@ function PlansPageInner() {
     const handleUpgrade = async (planId: string) => {
         if (!orgId || !token) return;
         if (!billingConfigured) {
-            setError("Billing is not configured. Please contact support.");
+            setError("Self-service billing coming soon. Contact support@nyccompliancearchitect.com to upgrade.");
             return;
         }
         setUpgradingPlan(planId);
@@ -279,8 +279,8 @@ function PlansPageInner() {
             )}
 
             {!billingConfigured && (
-                <InfoBanner variant="info" title="Billing is disabled in this environment.">
-                    Checkout and portal actions are unavailable. Contact your administrator to enable Stripe billing.
+                <InfoBanner variant="info" title="Self-service billing is coming soon.">
+                    Plan upgrades will be available shortly. In the meantime, contact <strong>support@nyccompliancearchitect.com</strong> to upgrade your plan.
                 </InfoBanner>
             )}
 
@@ -400,7 +400,10 @@ function PlansPageInner() {
                                     </Button>
                                 ) : (
                                     <Button
-                                        className="w-full bg-gradient-to-r from-slate-800 to-slate-700 text-white hover:from-slate-700 hover:to-slate-600 gap-2"
+                                        className={`w-full gap-2 ${billingConfigured
+                                            ? "bg-gradient-to-r from-slate-800 to-slate-700 text-white hover:from-slate-700 hover:to-slate-600"
+                                            : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                        }`}
                                         onClick={() => handleUpgrade(plan.id)}
                                         disabled={isUpgrading || loading || !billingConfigured}
                                     >
@@ -409,9 +412,13 @@ function PlansPageInner() {
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 Redirecting to Stripe…
                                             </>
+                                        ) : billingConfigured ? (
+                                            <>
+                                                Upgrade <ArrowRight className="h-4 w-4" />
+                                            </>
                                         ) : (
                                             <>
-                                                {billingConfigured ? "Upgrade" : "Billing disabled"} <ArrowRight className="h-4 w-4" />
+                                                Coming soon <ArrowRight className="h-4 w-4" />
                                             </>
                                         )}
                                     </Button>
