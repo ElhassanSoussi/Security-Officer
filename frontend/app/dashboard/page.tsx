@@ -22,6 +22,7 @@ import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ComplianceHealthPanel } from "@/components/ComplianceHealthPanel";
 import { UsagePanel } from "@/components/UsagePanel";
 import { isDemoMode, DEMO_STATS, DEMO_ACTIVITY, DEMO_AUDITS, DEMO_ORG_ID } from "@/lib/demo-data";
+import { OnboardingGuide } from "@/components/onboarding/OnboardingGuide";
 
 export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -174,6 +175,11 @@ export default function Dashboard() {
                     </div>
                 }
             />
+
+            {/* Phase 26: New Customer Onboarding Guide */}
+            {!demoActive && (
+                <OnboardingGuide variant="banner" />
+            )}
 
             {/* Demo Mode Banner */}
             {demoActive && (

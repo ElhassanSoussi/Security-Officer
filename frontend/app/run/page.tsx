@@ -17,6 +17,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import { StepHeader } from "@/components/ui/StepHeader";
 import { Select } from "@/components/ui/select";
+import { OnboardingStepBanner } from "@/components/onboarding/OnboardingStepBanner";
 
 export interface Run {
     id: string;
@@ -181,6 +182,17 @@ export default function RunPage() {
             setQuestions(data.data || []); // API changed to return {data: items}
             setStep("review");
 
+            // Phase 26 onboarding: completing step 3 advances to step 4
+            try {
+                const tok = freshToken;
+                const st = await ApiClient.getOnboardingState(tok);
+                if (!st.onboarding_completed && st.onboarding_step === 3) {
+                    await ApiClient.patchOnboardingState({ onboarding_step: 4 }, tok);
+                }
+            } catch {
+                // ignore
+            }
+
         } catch (e: any) {
             console.error(e);
             setError("Analysis failed: " + e.message);
@@ -209,6 +221,16 @@ export default function RunPage() {
             }
             setToken(freshToken);
             await ApiClient.generateExport(file, questions, currentOrgId, selectedProjectId || undefined, runData?.id, freshToken);
+
+            // Phase 26 onboarding: export success completes onboarding
+            try {
+                const st = await ApiClient.getOnboardingState(freshToken);
+                if (!st.onboarding_completed && st.onboarding_step === 5) {
+                    await ApiClient.patchOnboardingState({ onboarding_completed: true, onboarding_step: 5 }, freshToken);
+                }
+            } catch {
+                // ignore
+            }
         } catch (e: any) {
             console.error(e);
             if (String(e?.message || "").toLowerCase().includes("unauthorized")) {
@@ -237,6 +259,10 @@ export default function RunPage() {
                 title="Run Questionnaire"
                 subtitle="Upload a vendor security questionnaire and generate AI-powered answers."
             />
+
+            {/* Phase 26 onboarding banners */}
+            <OnboardingStepBanner expectedStep={3} />
+            <OnboardingStepBanner expectedStep={5} />
 
             {/* ── Step indicator ── */}
             <StepHeader steps={STEPS} currentStepId={step} />

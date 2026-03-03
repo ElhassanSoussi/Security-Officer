@@ -897,4 +897,26 @@ export class ApiClient {
     static async resetDemoWorkspace(token?: string): Promise<any> {
         return this.post<any>("/admin/demo-reset", {}, token);
     }
+
+    // --- Phase 26: Onboarding ---
+    static async getOnboardingState(token?: string): Promise<{ onboarding_completed: boolean; onboarding_step: number }> {
+        return this.fetch("/org/onboarding", {}, token);
+    }
+
+    static async patchOnboardingState(
+        payload: { onboarding_completed?: boolean; onboarding_step?: number },
+        token?: string
+    ): Promise<{ onboarding_completed: boolean; onboarding_step: number }> {
+        return this.patch("/org/onboarding", payload, token);
+    }
+
+    static async getOrgMetrics(token?: string): Promise<{
+        documents_count: number;
+        projects_count: number;
+        runs_count: number;
+        reviewed_count: number;
+        exports_count: number;
+    }> {
+        return this.fetch("/org/metrics", {}, token);
+    }
 }

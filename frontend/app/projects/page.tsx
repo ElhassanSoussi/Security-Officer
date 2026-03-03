@@ -15,6 +15,7 @@ import { getStoredOrgId, setStoredOrgId } from "@/lib/orgContext";
 import { useToast } from "@/components/ui/toaster";
 import PageHeader from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { OnboardingStepBanner } from "@/components/onboarding/OnboardingStepBanner";
 
 export default function ProjectsPage() {
     const [projects, setProjects] = useState<Project[]>([]);
@@ -99,6 +100,19 @@ export default function ProjectsPage() {
             setNewProjectName("");
             setIsOpen(false);
             toast({ title: "Project Created", description: `"${created.project_name || newProjectName.trim()}" is ready.`, variant: "success" });
+
+            // Phase 26 onboarding: completing step 2 (create a project) advances to step 3
+            try {
+                if (token) {
+                    const st = await ApiClient.getOnboardingState(token);
+                    if (!st.onboarding_completed && st.onboarding_step === 2) {
+                        await ApiClient.patchOnboardingState({ onboarding_step: 3 }, token);
+                    }
+                }
+            } catch {
+                // ignore
+            }
+
             router.push(`/projects/${created.org_id}/${created.project_id}`);
         } catch (err: any) {
             console.error("Create project failed:", err);
@@ -121,6 +135,7 @@ export default function ProjectsPage() {
 
     return (
         <div className="space-y-8">
+            <OnboardingStepBanner expectedStep={2} />
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <PageHeader
                     title="Projects"

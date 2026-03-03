@@ -353,6 +353,7 @@ from app.api.routes import router as main_router
 from app.api.endpoints import runs, billing, orgs, projects, settings as settings_ep, audit, documents
 from app.api.endpoints import admin as admin_ep  # Phase 21
 from app.api.endpoints import sales as sales_ep  # Phase 22
+from app.api.endpoints import onboarding as onboarding_ep  # Phase 26
 
 app.include_router(main_router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
@@ -362,6 +363,8 @@ app.include_router(billing.router, prefix=f"{settings.API_V1_STR}/billing", tags
 app.include_router(orgs.router, prefix=f"{settings.API_V1_STR}/orgs", tags=["Organizations"])
 app.include_router(settings_ep.router, prefix=f"{settings.API_V1_STR}/settings", tags=["Settings"])
 app.include_router(audit.router, prefix=f"{settings.API_V1_STR}/audit", tags=["Audit"])
+# Phase 26: Onboarding guide endpoints
+app.include_router(onboarding_ep.router, prefix=settings.API_V1_STR, tags=["Onboarding"])
 # Phase 21: Admin + SOC2 compliance endpoints
 app.include_router(admin_ep.router, prefix=settings.API_V1_STR, tags=["Admin", "SOC2"])
 # Phase 22: Sales engine + lead capture + demo reset

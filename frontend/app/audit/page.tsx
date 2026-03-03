@@ -27,6 +27,7 @@ import { Select } from "@/components/ui/select";
 import { AuditFilterChips, applyAuditChipFilter, computeChipCounts, type AuditFilterChip } from "@/components/AuditFilterChips";
 import { BulkActions } from "@/components/BulkActions";
 import { useRBAC } from "@/hooks/useRBAC";
+import { OnboardingStepBanner } from "@/components/onboarding/OnboardingStepBanner";
 
 /* ── Skeleton Row ───────────────────────────────── */
 function SkeletonRow({ cols }: { cols: number }) {
@@ -206,6 +207,15 @@ export default function AuditPage() {
             const token = await getToken();
             if (!token) return;
             await ApiClient.reviewAuditEntry(audit.run_id, audit.id, status, "", token);
+            // Phase 26 onboarding: completing step 4 advances to step 5
+            try {
+                const st = await ApiClient.getOnboardingState(token);
+                if (!st.onboarding_completed && st.onboarding_step === 4) {
+                    await ApiClient.patchOnboardingState({ onboarding_step: 5 }, token);
+                }
+            } catch {
+                // ignore
+            }
             toast({
                 title: status === "approved" ? "Answer approved" : "Answer rejected",
                 description: `Entry ${audit.id.slice(0, 8)} marked as ${status}.`,
@@ -266,6 +276,15 @@ export default function AuditPage() {
             }
             // Then review
             await ApiClient.reviewAuditEntry(drawerAudit.run_id, drawerAudit.id, status, drawerNote, token);
+            // Phase 26 onboarding: completing step 4 advances to step 5
+            try {
+                const st = await ApiClient.getOnboardingState(token);
+                if (!st.onboarding_completed && st.onboarding_step === 4) {
+                    await ApiClient.patchOnboardingState({ onboarding_step: 5 }, token);
+                }
+            } catch {
+                // ignore
+            }
             toast({
                 title: status === "approved" ? "Answer approved" : "Answer rejected",
                 description: `Entry marked as ${status}.`,
@@ -444,6 +463,8 @@ export default function AuditPage() {
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
+            {/* Phase 26 onboarding */}
+            <OnboardingStepBanner expectedStep={4} />
             <PageHeader
                 title={
                     <span className="flex items-center gap-2">
