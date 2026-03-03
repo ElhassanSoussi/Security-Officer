@@ -124,6 +124,7 @@ def create_checkout_session(
         "line_items": [{"price": price_id, "quantity": 1}],
         "success_url": success_url,
         "cancel_url": cancel_url,
+        "allow_promotion_codes": True,
         "metadata": {"org_id": org_id, "plan_name": plan_name.upper()},
     }
 
