@@ -481,14 +481,181 @@ def get_billing_summary_endpoint(
     return get_billing_summary(resolved_org_id)
 
 
-@router.get("/current", response_model=Dict[str, Any])
-def get_current_billing(
+# ── Billing Summary (PlanService-based) ──────────────────────
+
+class PortalSessionRequest(BaseModel):
+    org_id: str
+
+
+@router.get("/billing-summary", response_model=Dict[str, Any])
+def get_plan_billing_summary(
     org_id: str | None = None,
+    request: Request = None,
     user=Depends(get_current_user),
     token: HTTPAuthorizationCredentials = Depends(security),
 ):
-    """Alias endpoint used by ops verification and frontend integrations."""
-    return get_subscription(org_id=org_id, user=user, token=token)
+    """
+    Return the org's plan, subscription status, and real-time usage
+    computed via PlanService limits + live DB counts.
+
+    Response shape:
+    {
+      plan, subscription_status, stripe_price_id, current_period_end,
+      billing_configured, has_stripe,
+      usage: { documents_used, documents_limit, projects_used, projects_limit,
+               runs_used, runs_limit }
+    }
+    """
+    from app.core.plan_service import PlanService, Plan, PLAN_LIMITS, _current_month_start
+
+    user_id = require_user_id(user)
+
+    try:
+        sb = get_supabase(token.credentials)
+    except Exception:
+        sb = None
+
+    resolved_org_id = None
+    if sb is not None:
+        try:
+            resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    if not resolved_org_id:
+        # No org — return STARTER defaults with zero usage
+        limits = PlanService.get_limits(Plan.STARTER)
+        return {
+            "plan": "starter",
+            "subscription_status": "trialing",
+            "stripe_price_id": None,
+            "current_period_end": None,
+            "billing_configured": _BILLING_CONFIGURED,
+            "has_stripe": False,
+            "usage": {
+                "documents_used": 0,
+                "documents_limit": limits["max_documents"],
+                "projects_used": 0,
+                "projects_limit": limits["max_projects"],
+                "runs_used": 0,
+                "runs_limit": limits["max_runs_per_month"],
+            },
+        }
+
+    # Read org row
+    admin_sb = get_supabase_admin()
+    org_data: Dict[str, Any] = {}
+    try:
+        try:
+            res = (
+                admin_sb.table("organizations")
+                .select("plan, plan_tier, subscription_status, stripe_price_id, current_period_end, stripe_customer_id")
+                .eq("id", resolved_org_id)
+                .single()
+                .execute()
+            )
+            org_data = res.data or {}
+        except Exception:
+            res = (
+                admin_sb.table("organizations")
+                .select("plan, plan_tier")
+                .eq("id", resolved_org_id)
+                .single()
+                .execute()
+            )
+            org_data = res.data or {}
+    except Exception as e:
+        logger.warning("billing-summary org lookup failed org=%s: %s", resolved_org_id, str(e)[:120])
+
+    raw_plan = (org_data.get("plan") or org_data.get("plan_tier") or "starter").strip().lower()
+    try:
+        plan_enum = Plan(raw_plan)
+    except ValueError:
+        plan_enum = Plan.STARTER
+
+    limits = PlanService.get_limits(plan_enum)
+    sub_status = (org_data.get("subscription_status") or "trialing").strip().lower()
+
+    # Count live usage
+    month_start = _current_month_start()
+
+    def _safe_count(table: str, monthly: bool = False) -> int:
+        try:
+            q = admin_sb.table(table).select("id", count="exact").eq("org_id", resolved_org_id)
+            if monthly:
+                q = q.gte("created_at", month_start)
+            r = q.execute()
+            return r.count if r.count is not None else 0
+        except Exception:
+            return 0
+
+    docs_used = _safe_count("documents")
+    projects_used = _safe_count("projects")
+    runs_used = _safe_count("runs", monthly=True)
+
+    # For ELITE treat limits as effectively unlimited (null in response)
+    docs_limit = limits["max_documents"] if plan_enum != Plan.ELITE else None
+    projects_limit = limits["max_projects"] if plan_enum != Plan.ELITE else None
+    runs_limit = limits["max_runs_per_month"] if plan_enum != Plan.ELITE else None
+
+    return {
+        "plan": plan_enum.value,
+        "subscription_status": sub_status,
+        "stripe_price_id": org_data.get("stripe_price_id"),
+        "current_period_end": org_data.get("current_period_end"),
+        "billing_configured": _BILLING_CONFIGURED,
+        "has_stripe": bool(org_data.get("stripe_customer_id")),
+        "usage": {
+            "documents_used": docs_used,
+            "documents_limit": docs_limit,
+            "projects_used": projects_used,
+            "projects_limit": projects_limit,
+            "runs_used": runs_used,
+            "runs_limit": runs_limit,
+        },
+    }
+
+
+# ── Portal Session (JSON body) ───────────────────────────────
+
+@router.post("/portal-session")
+def create_portal_session_v2(
+    body: PortalSessionRequest,
+    request: Request,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Create a Stripe Customer Portal session.
+    Returns { url } for the frontend to redirect to.
+    """
+    _ensure_billing_configured()
+    user_id = require_user_id(user)
+    org_id = parse_uuid(body.org_id, "org_id", required=True)
+
+    supabase = get_supabase(token.credentials)
+    resolve_org_id_for_user(supabase, user_id, org_id, request=request)
+
+    admin_sb = get_supabase_admin()
+    res = (
+        admin_sb.table("organizations")
+        .select("stripe_customer_id")
+        .eq("id", org_id)
+        .single()
+        .execute()
+    )
+
+    if not res.data or not res.data.get("stripe_customer_id"):
+        raise HTTPException(status_code=400, detail="Organization has no billing account. Subscribe to a plan first.")
+
+    base_url = settings.FRONTEND_URL.rstrip("/")
+    url = billing_manager.create_portal_session(
+        customer_id=res.data["stripe_customer_id"],
+        return_url=f"{base_url}/settings/billing",
+    )
+    return {"url": url}
 
 
 # Stripe billing endpoints and webhook handling

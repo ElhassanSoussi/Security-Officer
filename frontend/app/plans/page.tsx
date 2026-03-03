@@ -175,7 +175,7 @@ function PlansPageInner() {
                 }
 
                 const [s, sub] = await Promise.all([
-                    ApiClient.getBillingSummary(oid, tkn),
+                    ApiClient.getEntitlementsSummary(oid, tkn),
                     ApiClient.getSubscription(oid, tkn),
                 ]);
 

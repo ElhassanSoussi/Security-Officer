@@ -582,9 +582,46 @@ export class ApiClient {
         return this.fetch<any>(`/billing/subscription?${params.toString()}`, {}, token);
     }
 
-    static async getBillingSummary(orgId: string, token?: string): Promise<any> {
-        const params = new URLSearchParams();
-        params.append("org_id", orgId);
+    static async getBillingSummary(orgId: string, token?: string): Promise<{
+        plan: string;
+        subscription_status: string;
+        stripe_price_id: string | null;
+        current_period_end: string | null;
+        billing_configured: boolean;
+        has_stripe: boolean;
+        usage: {
+            documents_used: number;
+            documents_limit: number | null;
+            projects_used: number;
+            projects_limit: number | null;
+            runs_used: number;
+            runs_limit: number | null;
+        };
+    }> {
+        const params = new URLSearchParams({ org_id: orgId });
+        try {
+            return await this.fetch(`/billing/billing-summary?${params}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return {
+                plan: "starter",
+                subscription_status: "trialing",
+                stripe_price_id: null,
+                current_period_end: null,
+                billing_configured: false,
+                has_stripe: false,
+                usage: {
+                    documents_used: 0, documents_limit: 25,
+                    projects_used: 0, projects_limit: 5,
+                    runs_used: 0, runs_limit: 10,
+                },
+            };
+        }
+    }
+
+    /** Legacy entitlements-based summary used by the Plans page. */
+    static async getEntitlementsSummary(orgId: string, token?: string): Promise<any> {
+        const params = new URLSearchParams({ org_id: orgId });
         return this.fetch<any>(`/billing/summary?${params.toString()}`, {}, token);
     }
 
@@ -597,6 +634,10 @@ export class ApiClient {
 
     static async createPortalSession(orgId: string, token?: string): Promise<{ url: string }> {
         return this.post<{ url: string }>(`/billing/portal?org_id=${orgId}`, {}, token);
+    }
+
+    static async createPortalSessionV2(orgId: string, token?: string): Promise<{ url: string }> {
+        return this.post<{ url: string }>("/billing/portal-session", { org_id: orgId }, token);
     }
 
     static async createStripeCheckout(

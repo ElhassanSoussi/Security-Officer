@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, User, Palette, Shield, BrainCircuit } from "lucide-react";
+import { Building2, User, Palette, Shield, BrainCircuit, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
     { href: "/settings", label: "Organization", icon: Building2, exact: true },
     { href: "/settings/profile", label: "Profile", icon: User },
+    { href: "/settings/billing", label: "Plans & Billing", icon: CreditCard },
     { href: "/settings/appearance", label: "Appearance", icon: Palette },
     { href: "/settings/security", label: "Security", icon: Shield },
     { href: "/settings/memory", label: "Inst. Memory", icon: BrainCircuit },

@@ -342,12 +342,14 @@ class TestFrontendEnterpriseModal:
         assert "trackEnterpriseInterest" in src
 
     def test_39_billing_imports_enterprise_modal(self):
+        # Enterprise contact is now on /plans; billing page links there via Upgrade Plan
         src = (FRONTEND_DIR / "app" / "settings" / "billing" / "page.tsx").read_text()
-        assert "EnterpriseContactModal" in src
+        assert "Upgrade Plan" in src or "EnterpriseContactModal" in src
 
     def test_40_billing_has_enterprise_modal_state(self):
+        # Billing page now uses portal-session for billing management
         src = (FRONTEND_DIR / "app" / "settings" / "billing" / "page.tsx").read_text()
-        assert "enterpriseModalOpen" in src
+        assert "portalLoading" in src or "enterpriseModalOpen" in src
 
 
 # ══════════════════════════════════════════════════════════════════════════════

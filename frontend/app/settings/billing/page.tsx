@@ -1,7 +1,12 @@
 "use client";
 
 /*
- * Billing Settings Page (/settings/billing)
+ * Plans & Billing — /settings/billing
+ *
+ * Sections:
+ *   1. Current Plan Card   (plan badge, status badge, renewal, upgrade CTA)
+ *   2. Usage               (progress bars for documents / projects / runs)
+ *   3. Manage Billing      (Stripe portal redirect)
  */
 
 import { useEffect, useState, useCallback } from "react";
@@ -16,143 +21,105 @@ import {
     AlertTriangle,
     BarChart2,
     RefreshCw,
+    ExternalLink,
+    ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ApiClient } from "@/lib/api";
 import { createClient } from "@/utils/supabase/client";
-import { EnterpriseContactModal } from "@/components/EnterpriseContactModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-interface SubStatus {
-    org_id: string;
-    plan_name: string;
-    stripe_status: string | null;
-    stripe_customer_id: string | null;
-    stripe_subscription_id: string | null;
-    current_period_end: string | null;
-    is_active: boolean;
-}
-
-interface UsageSummary {
-    runs_this_month: number;
-    documents_total: number;
-    memory_entries_total: number;
-    evidence_exports_total: number;
+interface BillingSummary {
     plan: string;
-    limits: {
-        plan_name: string;
-        max_runs_per_month: number;
-        max_documents: number;
-        max_memory_entries: number;
+    subscription_status: string;
+    stripe_price_id: string | null;
+    current_period_end: string | null;
+    billing_configured: boolean;
+    has_stripe: boolean;
+    usage: {
+        documents_used: number;
+        documents_limit: number | null;
+        projects_used: number;
+        projects_limit: number | null;
+        runs_used: number;
+        runs_limit: number | null;
     };
 }
 
-// ─── Plan data ──────────────────────────────────────────────────────────────
+// ─── Tier display config ────────────────────────────────────────────────────
 
-const PLANS = [
-    {
-        key: "FREE" as const,
-        label: "Free",
-        price: "$0",
-        interval: "forever",
-        features: [
-            "10 analysis runs / month",
-            "25 documents",
-            "100 memory entries",
-            "Evidence exports (unmetered)",
-        ],
-        highlight: false,
-    },
-    {
-        key: "PRO" as const,
-        label: "Pro",
-        price: "$149",
-        interval: "/ month",
-        features: [
-            "100 analysis runs / month",
-            "500 documents",
-            "2,000 memory entries",
-            "Evidence exports (unmetered)",
-            "14-day free trial",
-            "Priority support",
-        ],
-        highlight: true,
-    },
-    {
-        key: "ENTERPRISE" as const,
-        label: "Enterprise",
-        price: "Custom",
-        interval: "",
-        features: [
-            "10,000 analysis runs / month",
-            "100,000 documents",
-            "1M memory entries",
-            "Evidence exports (unmetered)",
-            "Dedicated support",
-            "Custom integrations",
-        ],
-        highlight: false,
-    },
-];
+const TIER_DISPLAY: Record<string, { label: string; color: string }> = {
+    starter: { label: "Starter", color: "bg-slate-100 text-slate-700 border-slate-200" },
+    growth:  { label: "Growth",  color: "bg-blue-100 text-blue-800 border-blue-200" },
+    elite:   { label: "Elite",   color: "bg-violet-100 text-violet-800 border-violet-200" },
+};
 
-// ─── Status badge helper ─────────────────────────────────────────────────────
+const STATUS_DISPLAY: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+    active:      { label: "Active",      color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: <CheckCircle2 className="h-3 w-3" /> },
+    trialing:    { label: "Trialing",    color: "bg-blue-100 text-blue-800 border-blue-200",          icon: <Clock className="h-3 w-3" /> },
+    past_due:    { label: "Past Due",    color: "bg-amber-100 text-amber-800 border-amber-200",       icon: <AlertTriangle className="h-3 w-3" /> },
+    canceled:    { label: "Canceled",    color: "bg-red-100 text-red-800 border-red-200",             icon: <XCircle className="h-3 w-3" /> },
+    unpaid:      { label: "Unpaid",      color: "bg-red-100 text-red-800 border-red-200",             icon: <XCircle className="h-3 w-3" /> },
+    incomplete:  { label: "Incomplete",  color: "bg-slate-100 text-slate-700 border-slate-200",       icon: <AlertTriangle className="h-3 w-3" /> },
+};
 
-function StripeStatusBadge({ status }: { status: string | null }) {
-    if (!status || status === "") {
-        return <Badge variant="secondary">Free tier</Badge>;
-    }
-    const map: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-        active:    { label: "Active",    className: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: <CheckCircle2 className="h-3 w-3" /> },
-        trialing:  { label: "Trialing",  className: "bg-blue-100 text-blue-800 border-blue-200",         icon: <Clock className="h-3 w-3" /> },
-        past_due:  { label: "Past Due",  className: "bg-amber-100 text-amber-800 border-amber-200",      icon: <AlertTriangle className="h-3 w-3" /> },
-        canceled:  { label: "Canceled",  className: "bg-red-100 text-red-800 border-red-200",            icon: <XCircle className="h-3 w-3" /> },
-        unpaid:    { label: "Unpaid",    className: "bg-red-100 text-red-800 border-red-200",            icon: <XCircle className="h-3 w-3" /> },
-        incomplete:{ label: "Incomplete",className: "bg-slate-100 text-slate-700 border-slate-200",      icon: <AlertTriangle className="h-3 w-3" /> },
-    };
-    const def = map[status] ?? { label: status, className: "bg-slate-100 text-slate-700 border-slate-200", icon: null };
+// ─── Components ──────────────────────────────────────────────────────────────
+
+function PlanBadge({ plan }: { plan: string }) {
+    const tier = TIER_DISPLAY[plan.toLowerCase()] ?? TIER_DISPLAY.starter;
     return (
-        <Badge variant="outline" className={`gap-1 ${def.className}`}>
-            {def.icon}
-            {def.label}
+        <Badge variant="outline" className={`gap-1 text-xs font-semibold ${tier.color}`}>
+            <Zap className="h-3 w-3" />
+            {tier.label}
         </Badge>
     );
 }
 
-function PlanBadge({ plan }: { plan: string }) {
-    const colors: Record<string, string> = {
-        FREE:       "bg-slate-100 text-slate-700",
-        PRO:        "bg-blue-100 text-blue-800",
-        ENTERPRISE: "bg-violet-100 text-violet-800",
-    };
-    const cl = colors[plan.toUpperCase()] ?? "bg-slate-100 text-slate-700";
+function StatusBadge({ status }: { status: string }) {
+    const s = STATUS_DISPLAY[status] ?? { label: status, color: "bg-slate-100 text-slate-700 border-slate-200", icon: null };
     return (
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${cl}`}>
-            <Zap className="h-3 w-3" />
-            {plan}
-        </span>
+        <Badge variant="outline" className={`gap-1 ${s.color}`}>
+            {s.icon}
+            {s.label}
+        </Badge>
     );
 }
 
-// ─── Progress bar ────────────────────────────────────────────────────────────
+function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
+    const isUnlimited = limit === null;
+    const pct = isUnlimited ? 0 : limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+    const atLimit = !isUnlimited && limit > 0 && used >= limit;
+    const nearLimit = !isUnlimited && limit > 0 && pct >= 85;
+    const barColor = atLimit ? "bg-red-500" : nearLimit ? "bg-amber-400" : "bg-primary";
 
-function UsageBar({ label, value, max }: { label: string; value: number; max: number }) {
-    const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-    const color = pct >= 100 ? "bg-red-500" : pct >= 85 ? "bg-amber-400" : "bg-blue-500";
-    const barRef = useCallback((node: HTMLDivElement | null) => {
-        if (node) node.style.width = `${pct}%`;
-    }, [pct]);
     return (
-        <div className="space-y-1">
-            <div className="flex justify-between text-xs text-slate-600">
-                <span>{label}</span>
-                <span>{value.toLocaleString()} / {max.toLocaleString()}</span>
+        <div className="space-y-1.5">
+            <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{label}</span>
+                <span className={`font-medium ${atLimit ? "text-red-600" : "text-foreground"}`}>
+                    {used.toLocaleString()}
+                    {isUnlimited ? (
+                        <span className="text-muted-foreground font-normal"> / Unlimited</span>
+                    ) : (
+                        <span className="text-muted-foreground font-normal"> / {limit!.toLocaleString()}</span>
+                    )}
+                </span>
             </div>
-            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                <div ref={barRef} className={`h-full rounded-full transition-all ${color}`} />
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                    className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                    style={{ width: isUnlimited ? "2%" : `${Math.max(pct, 2)}%` }}
+                />
             </div>
+            {atLimit && (
+                <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Limit reached — upgrade to continue
+                </p>
+            )}
         </div>
     );
 }
@@ -161,16 +128,13 @@ function UsageBar({ label, value, max }: { label: string; value: number; max: nu
 
 export default function BillingPage() {
     const searchParams = useSearchParams();
-    const checkoutResult = searchParams.get("checkout"); // "success" | "canceled"
+    const checkoutResult = searchParams.get("checkout");
 
     const [loading, setLoading] = useState(true);
-    const [upgrading, setUpgrading] = useState<string | null>(null);
-    const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
+    const [portalLoading, setPortalLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [sub, setSub] = useState<SubStatus | null>(null);
-    const [usage, setUsage] = useState<UsageSummary | null>(null);
-    const [token, setToken] = useState<string | undefined>(undefined);
-    const [orgId, setOrgId] = useState<string | undefined>(undefined);
+    const [data, setData] = useState<BillingSummary | null>(null);
+    const [orgId, setOrgId] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -179,18 +143,11 @@ export default function BillingPage() {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
             const tok = session?.access_token;
-            setToken(tok);
-
             const org = await ApiClient.getCurrentOrg(tok);
             const oid: string = org?.id;
             setOrgId(oid);
-
-            const [subData, usageData] = await Promise.all([
-                ApiClient.getSubscriptionStatus(oid, tok),
-                ApiClient.getUsageSummary(oid, tok),
-            ]);
-            setSub(subData);
-            setUsage(usageData);
+            const summary = await ApiClient.getBillingSummary(oid, tok);
+            setData(summary);
         } catch (e: any) {
             setError(e?.message ?? "Failed to load billing data");
         } finally {
@@ -200,38 +157,30 @@ export default function BillingPage() {
 
     useEffect(() => { load(); }, [load]);
 
-    async function handleUpgrade(planKey: "FREE" | "PRO" | "ENTERPRISE") {
+    const handleManageBilling = async () => {
         if (!orgId) return;
-        setUpgrading(planKey);
+        setPortalLoading(true);
         try {
-            const result = await ApiClient.createStripeCheckout(orgId, planKey, token);
+            const result = await ApiClient.createPortalSessionV2(orgId);
             if (result.url) window.location.href = result.url;
         } catch (e: any) {
-            setError(e?.message ?? "Checkout failed. Please try again.");
+            setError(e?.message ?? "Could not open billing portal. You may need to subscribe to a plan first.");
         } finally {
-            setUpgrading(null);
+            setPortalLoading(false);
         }
-    }
+    };
 
-    const renewalDate = sub?.current_period_end
-        ? new Date(sub.current_period_end).toLocaleDateString("en-US", {
+    const plan = data?.plan?.toLowerCase() ?? "starter";
+    const isElite = plan === "elite";
+    const renewalDate = data?.current_period_end
+        ? new Date(data.current_period_end).toLocaleDateString("en-US", {
             year: "numeric", month: "long", day: "numeric",
           })
         : null;
 
-    const currentPlan = (sub?.plan_name ?? usage?.plan ?? "FREE").toUpperCase();
-
     return (
-        <div className="max-w-4xl mx-auto space-y-8 py-2">
-            {/* ── Page header ── */}
-            <div>
-                <h1 className="text-2xl font-semibold text-slate-900">Billing &amp; Subscription</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Manage your plan, payment method, and usage.
-                </p>
-            </div>
-
-            {/* ── Checkout result banner ── */}
+        <div className="max-w-3xl space-y-6">
+            {/* Checkout result banners */}
             {checkoutResult === "success" && (
                 <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -245,211 +194,146 @@ export default function BillingPage() {
                 </div>
             )}
 
-            {/* ── Error ── */}
+            {/* Error */}
             {error && (
                 <div className="flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     {error}
+                    <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setError(null)}>
+                        Dismiss
+                    </Button>
                 </div>
             )}
 
-            {/* ── Current plan card ── */}
+            {/* 1. Current Plan Card */}
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <CreditCard className="h-4 w-4 text-slate-500" />
-                        Current Subscription
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={load}
-                            disabled={loading}
-                            className="gap-1 text-xs"
-                        >
-                            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                            Refresh
-                        </Button>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                    <div className="space-y-1">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            Current Plan
+                        </CardTitle>
+                        <CardDescription>Your organization&apos;s active subscription</CardDescription>
                     </div>
+                    <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="gap-1 text-xs">
+                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                        Refresh
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
-                        <div className="space-y-2 animate-pulse">
-                            <div className="h-4 w-32 rounded bg-slate-200" />
-                            <div className="h-4 w-48 rounded bg-slate-200" />
+                        <div className="space-y-3 animate-pulse">
+                            <div className="h-5 w-28 rounded bg-muted" />
+                            <div className="h-4 w-44 rounded bg-muted" />
                         </div>
-                    ) : (
-                        <div className="flex flex-wrap items-center gap-4">
+                    ) : data ? (
+                        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
                             <div className="space-y-1">
-                                <div className="text-xs text-slate-500 uppercase tracking-wide">Plan</div>
-                                <PlanBadge plan={currentPlan} />
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Plan</p>
+                                <PlanBadge plan={data.plan} />
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs text-slate-500 uppercase tracking-wide">Status</div>
-                                <StripeStatusBadge status={sub?.stripe_status ?? null} />
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Status</p>
+                                <StatusBadge status={data.subscription_status} />
                             </div>
                             {renewalDate && (
                                 <div className="space-y-1">
-                                    <div className="text-xs text-slate-500 uppercase tracking-wide">Renews</div>
-                                    <div className="text-sm font-medium text-slate-800">{renewalDate}</div>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Renews</p>
+                                    <p className="text-sm font-medium text-foreground">{renewalDate}</p>
+                                </div>
+                            )}
+                            {!isElite && (
+                                <div className="ml-auto">
+                                    <Button asChild size="sm" className="gap-1.5">
+                                        <Link href="/plans">
+                                            <ArrowUpRight className="h-3.5 w-3.5" />
+                                            Upgrade Plan
+                                        </Link>
+                                    </Button>
                                 </div>
                             )}
                         </div>
-                    )}
+                    ) : null}
                 </CardContent>
             </Card>
 
-            {/* ── Usage this month ── */}
-            {usage && (
+            {/* 2. Usage Section */}
+            {data && !loading && (
                 <Card>
-                    <CardHeader className="pb-2">
+                    <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
-                            <BarChart2 className="h-4 w-4 text-slate-500" />
-                            Usage This Month
+                            <BarChart2 className="h-4 w-4 text-muted-foreground" />
+                            Usage
                         </CardTitle>
+                        <CardDescription>
+                            Resource consumption against your plan limits. Runs reset monthly.
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-5">
                         <UsageBar
-                            label="Analysis runs"
-                            value={usage.runs_this_month}
-                            max={usage.limits.max_runs_per_month}
+                            label="Documents"
+                            used={data.usage.documents_used}
+                            limit={data.usage.documents_limit}
                         />
                         <UsageBar
-                            label="Documents stored"
-                            value={usage.documents_total}
-                            max={usage.limits.max_documents}
+                            label="Projects"
+                            used={data.usage.projects_used}
+                            limit={data.usage.projects_limit}
                         />
                         <UsageBar
-                            label="Memory entries"
-                            value={usage.memory_entries_total}
-                            max={usage.limits.max_memory_entries}
+                            label="Analysis Runs (this month)"
+                            used={data.usage.runs_used}
+                            limit={data.usage.runs_limit}
                         />
-                        <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
-                            <span>Evidence exports</span>
-                            <span className="font-medium text-slate-700">
-                                {usage.evidence_exports_total.toLocaleString()} (unmetered)
-                            </span>
-                        </div>
                     </CardContent>
                 </Card>
             )}
 
-            {/* ── Plans comparison ── */}
-            <div>
-                <h2 className="text-base font-semibold text-slate-800 mb-4">Available Plans</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {PLANS.map((plan) => {
-                        const isCurrent = currentPlan === plan.key;
-                        return (
-                            <div
-                                key={plan.key}
-                                className={`relative rounded-xl border p-5 flex flex-col gap-4 ${
-                                    plan.highlight
-                                        ? "border-blue-400 shadow-md bg-blue-50/40"
-                                        : "border-slate-200 bg-white"
-                                } ${isCurrent ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
+            {/* 3. Manage Billing */}
+            {data && !loading && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                            Manage Billing
+                        </CardTitle>
+                        <CardDescription>
+                            Update payment method, view invoices, or cancel your subscription via the Stripe billing portal.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {data.has_stripe && data.billing_configured ? (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={handleManageBilling}
+                                disabled={portalLoading}
                             >
-                                {plan.highlight && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                        <span className="rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
-                                            Most Popular
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-slate-900">{plan.label}</span>
-                                        {isCurrent && (
-                                            <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
-                                                Current
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <div className="mt-1 flex items-baseline gap-1">
-                                        <span className="text-2xl font-bold text-slate-900">{plan.price}</span>
-                                        {plan.interval && (
-                                            <span className="text-sm text-slate-500">{plan.interval}</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <ul className="flex-1 space-y-2">
-                                    {plan.features.map((f) => (
-                                        <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                                            {f}
-                                        </li>
-                                    ))}
-                                </ul>
-
-                                {isCurrent ? (
-                                    <Button variant="outline" size="sm" disabled className="w-full">
-                                        Current Plan
-                                    </Button>
-                                ) : plan.key === "ENTERPRISE" ? (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full"
-                                        onClick={() => setEnterpriseModalOpen(true)}
-                                    >
-                                        Contact Sales
-                                    </Button>
+                                {portalLoading ? (
+                                    <>
+                                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                        Opening…
+                                    </>
                                 ) : (
-                                    <Button
-                                        size="sm"
-                                        className={`w-full gap-1.5 ${
-                                            plan.highlight
-                                                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-                                                : ""
-                                        }`}
-                                        variant={plan.highlight ? "default" : "outline"}
-                                        onClick={() => handleUpgrade(plan.key)}
-                                        disabled={upgrading !== null}
-                                    >
-                                        {upgrading === plan.key ? (
-                                            <>
-                                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                                Redirecting…
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Zap className="h-3.5 w-3.5" />
-                                                {plan.key === "FREE" ? "Downgrade" : "Upgrade"}
-                                            </>
-                                        )}
-                                    </Button>
+                                    <>
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Manage Billing
+                                    </>
                                 )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <p className="mt-4 text-xs text-center text-slate-400">
-                    Upgrades take effect immediately. Cancel anytime. Questions?{" "}
-                    <a href="mailto:support@nyccompliancearchitect.com" className="underline">
-                        Contact support
-                    </a>
-                    .
-                </p>
-            </div>
-
-            {/* ── Back link ── */}
-            <div className="pt-2 border-t">
-                <Link href="/settings" className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2">
-                    ← Back to Settings
-                </Link>
-            </div>
-
-            {/* ── Enterprise Contact Modal ── */}
-            <EnterpriseContactModal
-                open={enterpriseModalOpen}
-                onOpenChange={setEnterpriseModalOpen}
-                orgId={orgId}
-                token={token}
-            />
+                            </Button>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                No active Stripe subscription.{" "}
+                                <Link href="/plans" className="text-primary underline underline-offset-2 hover:text-primary/80">
+                                    Subscribe to a plan
+                                </Link>{" "}
+                                to enable billing management.
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
