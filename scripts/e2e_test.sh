@@ -27,12 +27,12 @@ echo "========================================"
 echo ""
 
 # --- 0. Backend health ---
-echo "🔹 Step 0: Backend Health"
+echo "🔹 Backend Health"
 HTTP=$(curl -s -o /tmp/e2e_health.json -w "%{http_code}" "$API/health" 2>/dev/null || echo "000")
 if [ "$HTTP" = "200" ]; then ok "Backend healthy (HTTP $HTTP)"; else fail "Backend unreachable (HTTP $HTTP)"; exit 1; fi
 
 # --- 1. Auth ---
-echo "🔹 Step 1: Supabase Authentication"
+echo "🔹 Supabase Authentication"
 source "${ROOT}/.smoke.env" 2>/dev/null || true
 EMAIL="${SMOKE_EMAIL:?Set SMOKE_EMAIL in .smoke.env or environment}"
 PASS_W="${SMOKE_PASSWORD:?Set SMOKE_PASSWORD in .smoke.env or environment}"
@@ -49,18 +49,18 @@ if [ -n "$TOKEN" ] && [ "$TOKEN" != "" ]; then ok "Auth token obtained"; else fa
 AUTH="Authorization: Bearer $TOKEN"
 
 # --- 2. Get Org ---
-echo "🔹 Step 2: Fetch Organization"
+echo "🔹 Fetch Organization"
 HTTP=$(curl -s -o /tmp/e2e_org.json -w "%{http_code}" -H "$AUTH" "$API/orgs/current" 2>/dev/null || echo "000")
 ORG_ID=$(python3 -c "import json; print(json.load(open('/tmp/e2e_org.json')).get('id',''))" 2>/dev/null)
 if [ "$HTTP" = "200" ] && [ -n "$ORG_ID" ]; then ok "Org loaded: $ORG_ID (HTTP $HTTP)"; else fail "Org fetch failed (HTTP $HTTP)"; exit 1; fi
 
 # --- 3. List Projects ---
-echo "🔹 Step 3: List Projects"
+echo "🔹 List Projects"
 HTTP=$(curl -s -o /tmp/e2e_projects.json -w "%{http_code}" -H "$AUTH" "$API/projects?org_id=$ORG_ID" 2>/dev/null || echo "000")
 if [ "$HTTP" = "200" ]; then ok "Projects listed (HTTP $HTTP)"; else fail "Projects list failed (HTTP $HTTP)"; fi
 
 # --- 4. Analyze Excel ---
-echo "🔹 Step 4: Analyze Excel (sample questionnaire)"
+echo "🔹 Analyze Excel (sample questionnaire)"
 if [ ! -f "$SAMPLE" ]; then fail "Sample file not found: $SAMPLE"; exit 1; fi
 
 HTTP=$(curl -s -o /tmp/e2e_analyze.json -w "%{http_code}" \
@@ -81,12 +81,12 @@ else
 fi
 
 # --- 5. List Runs ---
-echo "🔹 Step 5: List Runs"
+echo "🔹 List Runs"
 HTTP=$(curl -s -o /tmp/e2e_runs.json -w "%{http_code}" -H "$AUTH" "$API/runs?org_id=$ORG_ID" 2>/dev/null || echo "000")
 if [ "$HTTP" = "200" ]; then ok "Runs listed (HTTP $HTTP)"; else fail "Runs list failed (HTTP $HTTP)"; fi
 
 # --- 6. Generate Export ---
-echo "🔹 Step 6: Generate Excel Export"
+echo "🔹 Generate Excel Export"
 ANSWERS_JSON=$(python3 -c "
 import json
 data = json.load(open('/tmp/e2e_analyze.json')).get('data', [])
@@ -109,12 +109,12 @@ else
 fi
 
 # --- 7. Audit Log ---
-echo "🔹 Step 7: Audit Log"
+echo "🔹 Audit Log"
 HTTP=$(curl -s -o /tmp/e2e_audit.json -w "%{http_code}" -H "$AUTH" "$API/audit/events?org_id=$ORG_ID&limit=5" 2>/dev/null || echo "000")
 if [ "$HTTP" = "200" ]; then ok "Audit log accessible (HTTP $HTTP)"; else fail "Audit log failed (HTTP $HTTP)"; fi
 
 # --- 8. Health Deep ---
-echo "🔹 Step 8: Deep Health"
+echo "🔹 Deep Health"
 HTTP=$(curl -s -o /tmp/e2e_deep.json -w "%{http_code}" -H "$AUTH" "$API/health/deep" 2>/dev/null || echo "000")
 if [ "$HTTP" = "200" ]; then ok "Deep health OK (HTTP $HTTP)"; else fail "Deep health failed (HTTP $HTTP — may be OK if billing disabled)"; fi
 

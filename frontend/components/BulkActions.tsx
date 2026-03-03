@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * BulkActions — Phase 14 Part 4
+ * BulkActions component.
  * Bulk approve / reject selected or filtered audit rows.
  */
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 12 Part 8: Production Build Verification Script
+# Production Build Verification Script
 #
 # Validates that both frontend and backend build successfully
 # and that critical quality gates pass before deployment.

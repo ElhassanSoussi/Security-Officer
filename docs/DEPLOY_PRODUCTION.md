@@ -243,7 +243,7 @@ After triggering test events, verify:
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `/api/v1/billing/checkout` | POST | Create Stripe Checkout Session (Phase 19 plans) |
+| `/api/v1/billing/checkout` | POST | Create Stripe Checkout Session |
 | `/api/v1/billing/webhook19` | POST | Stripe webhook receiver (signature-verified) |
 | `/api/v1/billing/status` | GET | Live subscription status for an org |
 | `/api/v1/billing/trial` | POST | Start a 14-day PRO trial (admin-granted) |

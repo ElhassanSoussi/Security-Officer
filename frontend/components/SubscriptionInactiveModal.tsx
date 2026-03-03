@@ -1,7 +1,7 @@
 "use client";
 
-/**
- * Phase 19 — Subscription Inactive Blocking Modal
+/*
+ * Subscription Inactive Blocking Modal
  *
  * Listens for the global "subscription:inactive" CustomEvent dispatched by
  * ApiClient.fetch() whenever the backend returns HTTP 402 SUBSCRIPTION_INACTIVE.

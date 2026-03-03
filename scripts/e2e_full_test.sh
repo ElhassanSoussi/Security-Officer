@@ -21,7 +21,7 @@ FAIL=0
 
 green() { printf "\033[32m%s\033[0m\n" "$1"; }
 red()   { printf "\033[31m%s\033[0m\n" "$1"; }
-step()  { printf "\n\033[1;36m=== STEP %s: %s ===\033[0m\n" "$1" "$2"; }
+step()  { printf "\n\033[1;36m=== %s: %s ===\033[0m\n" "$1" "$2"; }
 
 check() {
   if [ "$1" -eq 0 ]; then
@@ -33,19 +33,19 @@ check() {
   fi
 }
 
-# ─── Step 1: Backend health ───
+# ─── Backend health ───
 step 1 "Backend Health"
 HEALTH=$(curl -sf "$BACKEND/health" 2>/dev/null)
 echo "$HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='ok'" 2>/dev/null
 check $? "Backend /health returns ok"
 
-# ─── Step 2: Frontend proxy health ───
+# ─── Frontend proxy health ───
 step 2 "Frontend Proxy Health"
 PROXY_HEALTH=$(curl -sf "$FRONTEND/api/v1/health" 2>/dev/null)
 echo "$PROXY_HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='ok'" 2>/dev/null
 check $? "Frontend proxy /api/v1/health returns ok"
 
-# ─── Step 3: Auth ───
+# ─── Authentication ───
 step 3 "Authentication"
 AUTH_URL="${SUPABASE}/auth/v1/token?grant_type=password"
 TOKEN=$(curl -s -X POST "$AUTH_URL" \
@@ -64,13 +64,13 @@ fi
 
 AUTH="Authorization: Bearer $TOKEN"
 
-# ─── Step 4: Org check ───
+# ─── Organization ───
 step 4 "Organization"
 ORG=$(curl -sf "$BACKEND/api/v1/orgs" -H "$AUTH" 2>/dev/null)
 echo "$ORG" | python3 -c "import sys,json; orgs=json.load(sys.stdin); assert any(o['id']=='$ORG_ID' for o in orgs)" 2>/dev/null
 check $? "Org $ORG_ID exists"
 
-# ─── Step 5: Projects ───
+# ─── Projects ───
 step 5 "Projects"
 PROJECTS=$(curl -sf "$BACKEND/api/v1/projects?org_id=$ORG_ID" -H "$AUTH" 2>/dev/null)
 PROJ_ID=$(echo "$PROJECTS" | python3 -c "import sys,json; ps=json.load(sys.stdin); print(ps[0].get('project_id', ps[0].get('id','')) if ps else '')" 2>/dev/null)
@@ -89,7 +89,7 @@ else
   fi
 fi
 
-# ─── Step 6: Analyze Excel (DIRECT to backend) ───
+# ─── Analyze Excel (DIRECT to backend) ───
 step 6 "Analyze Excel (Direct Backend)"
 ANALYZE_DIRECT=$(curl -s --max-time 90 -X POST "$BACKEND/api/v1/analyze-excel" \
   -H "$AUTH" \
@@ -106,7 +106,7 @@ else
   echo "  Response: $(echo "$ANALYZE_DIRECT" | head -c 300)"
 fi
 
-# ─── Step 7: Analyze Excel (THROUGH FRONTEND PROXY — the failing path) ───
+# ─── Analyze Excel (THROUGH FRONTEND PROXY — the failing path) ───
 step 7 "Analyze Excel (Frontend Proxy)"
 ANALYZE_PROXY=$(curl -s --max-time 120 -X POST "$FRONTEND/api/v1/analyze-excel" \
   -H "$AUTH" \
@@ -123,7 +123,7 @@ else
   echo "  Response: $(echo "$ANALYZE_PROXY" | head -c 500)"
 fi
 
-# ─── Step 8: Get runs ───
+# ─── Runs List ───
 step 8 "Runs List"
 RUNS=$(curl -sf "$BACKEND/api/v1/runs" -H "$AUTH" 2>/dev/null)
 RUN_COUNT=$(echo "$RUNS" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null)
@@ -133,7 +133,7 @@ else
   check 1 "No runs found"
 fi
 
-# ─── Step 9: Export/Generate Excel ───
+# ─── Generate Excel Export ───
 step 9 "Generate Excel Export"
 EXPORT_RUN="${DIRECT_RUN_ID:-$PROXY_RUN_ID}"
 EXPORT_DATA="${ANALYZE_DIRECT:-$ANALYZE_PROXY}"
@@ -170,7 +170,7 @@ else
   check 1 "No run_id to export"
 fi
 
-# ─── Step 10: Audit log ───
+# ─── Audit log ───
 step 10 "Audit Log"
 AUDIT=$(curl -sf "$BACKEND/api/v1/audit/log?org_id=$ORG_ID" -H "$AUTH" 2>/dev/null)
 AUDIT_COUNT=$(echo "$AUDIT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else len(d.get('data',d.get('items',[]))))" 2>/dev/null)

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * RunSummaryCards — Phase 14 Part 3
+ * RunSummaryCards component.
  * Summary stat cards for the Run Details page.
  */
 

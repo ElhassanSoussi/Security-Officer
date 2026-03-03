@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * RunRiskPanel — Phase 15 Part 4
+ * RunRiskPanel component.
  * Displays a risk indicator banner on the run detail page.
  * CRITICAL  → >20% low confidence OR >10% rejected
  * WARNING   → >10% low confidence OR any pending

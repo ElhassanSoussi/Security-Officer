@@ -1,10 +1,9 @@
--- =============================================================================
--- Phase 19 — Stripe Billing Integration Migration
+-- Stripe Billing Integration Migration
 -- Run in Supabase SQL Editor after 012_billing_usage.sql
 -- Safe to re-run (uses IF NOT EXISTS / DO $$ blocks)
 -- =============================================================================
 
--- 1. Add Stripe tracking columns to the Phase-18 subscriptions table
+-- 1. Add Stripe tracking columns to the subscriptions table
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_customer_id     text;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_status           text

@@ -1,5 +1,5 @@
 """
-Phase 24 Verification: Marketing Site Rewrite
+Marketing Site Tests
 
 All tests are deterministic — no real DB / API / external calls.
 Tests verify that all six marketing sections exist as components and
@@ -64,8 +64,8 @@ Tests cover:
 56. DesignTone — no hype language (revolutionary, game-changing, etc.)
 57. DesignTone — enterprise tone (compliance, audit, evidence)
 58. DesignTone — minimal style (no excessive exclamation marks)
-59. Verify — VERIFY.md contains Phase 24 section
-60. Verify — VERIFY.md Phase 24 mentions 6 marketing sections
+59. Verify — VERIFY.md contains marketing site section
+60. Verify — VERIFY.md marketing section mentions 6 marketing sections
 """
 
 import os
@@ -423,8 +423,8 @@ class TestDesignToneAndVerify:
         count = self.all_marketing_text.count("!")
         assert count <= 2, f"Found {count} exclamation marks — enterprise tone should be restrained"
 
-    def test_59_verify_has_phase_24(self):
-        assert "phase 24" in self.verify_lower, "VERIFY.md missing Phase 24 section"
+    def test_59_verify_has_marketing_section(self):
+        assert "marketing" in self.verify_lower, "VERIFY.md missing marketing site section"
 
     def test_60_verify_mentions_six_sections(self):
-        assert "6" in self.verify_src or "six" in self.verify_lower, "VERIFY.md Phase 24 should mention 6 marketing sections"
+        assert "6" in self.verify_src or "six" in self.verify_lower, "VERIFY.md should mention 6 marketing sections"

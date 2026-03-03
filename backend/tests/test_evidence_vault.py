@@ -1,5 +1,5 @@
 """
-Phase 17 Verification: Evidence Vault + Immutable Audit Export
+Evidence Vault + Immutable Audit Export Tests
 
 All tests are deterministic — no DB / API / OpenAI calls needed.
 

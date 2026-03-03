@@ -1,4 +1,4 @@
--- Phase 5: Role-Based Access Control Migration
+-- Role-Based Access Control Migration
 -- Run with: psql $DATABASE_URL -f 006_rbac.sql
 -- Or apply via Supabase SQL Editor.
 

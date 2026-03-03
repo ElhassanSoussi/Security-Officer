@@ -1,4 +1,4 @@
--- Phase 23: Production Hardening + Security Cleanup
+-- Production Hardening and Security Cleanup Migration
 
 --
 -- 1. Tighten anon INSERT on sales_leads — restrict to INSERT only on allowed columns
@@ -58,7 +58,7 @@ create policy "anon_deny_delete_sales_leads"
 --   password_min_length = 10
 --   leaked_password_protection = "enabled"
 -- This is a Supabase Auth config change, not a SQL migration.
--- Documenting here for the Phase 23 security checklist.
+-- Documenting here for the security checklist.
 
 -- 5. Org-ID enforcement verification queries
 -- These are CHECK queries to verify org_id is enforced on all tenant tables.

@@ -1,4 +1,4 @@
--- Phase 16: Institutional Memory Governance + Activity Log
+-- Institutional Memory Governance and Activity Log Migration
 
 -- 1. Add governance columns to institutional_answers
 ALTER TABLE IF EXISTS institutional_answers

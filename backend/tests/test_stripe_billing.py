@@ -1,5 +1,5 @@
 """
-Phase 19 Verification: Stripe Billing Integration
+Stripe Billing Integration Tests
 
 All tests are deterministic — no real Stripe / DB / network calls.
 
@@ -106,7 +106,7 @@ def _read(path: str) -> str:
 # ===========================================================================
 
 def test_01_migration_sql_exists():
-    assert os.path.isfile(SQL_PATH), f"Phase 19 migration SQL not found: {SQL_PATH}"
+    assert os.path.isfile(SQL_PATH), f"Stripe billing migration SQL not found: {SQL_PATH}"
 
 
 def test_02_stripe_customer_id_column():
@@ -502,7 +502,7 @@ def test_43_billing_endpoint_has_webhook19():
 
 def test_44_billing_endpoint_has_status():
     src = _read(BILLING_ENDPOINT_PATH)
-    # The Phase-19 status route
+    # The billing status route
     assert '"/status"' in src or "'/status'" in src
 
 

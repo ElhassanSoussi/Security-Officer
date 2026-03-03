@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Phase 12 Part 7: Database migration runner
+# Database migration runner
 #
 # Usage:
 #   ./scripts/migrate.sh                        # Apply all migrations in order
-#   ./scripts/migrate.sh phase12                # Apply only phase12 migration
+#   ./scripts/migrate.sh <migration_name>       # Apply only specific migration
 #
 # Prerequisites:
 #   - SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in backend/.env

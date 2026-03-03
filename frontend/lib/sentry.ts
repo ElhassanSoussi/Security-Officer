@@ -1,5 +1,5 @@
 /**
- * Phase 20 Part 6 — Sentry client-side initialization.
+ * Sentry client-side initialization.
  *
  * Opt-in: only initializes when NEXT_PUBLIC_SENTRY_DSN is set.
  * Import and call `initSentry()` once in the root layout or _app.

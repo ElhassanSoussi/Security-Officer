@@ -1,9 +1,9 @@
 """
-Phase 5 Verification: Parts 2–4.
+Expiration Tracking, Compliance Pack Builder, and Audit Log Tests
 
-  Part 2: Expiration Tracking Engine — compute_expiration_status, classify_documents, summarize_expirations
-  Part 3: Compliance Pack Builder   — CompliancePackRequest model, zip creation, RBAC, audit event
-  Part 4: Audit Log Hardening       — /audit/events endpoint, pagination, filters, never-500
+  - Expiration Tracking Engine — compute_expiration_status, classify_documents, summarize_expirations
+  - Compliance Pack Builder   — CompliancePackRequest model, zip creation, RBAC, audit event
+  - Audit Log Hardening       — /audit/events endpoint, pagination, filters, never-500
 
 Total: deterministic tests.  Zero external dependencies (no DB, no network).
 """
@@ -33,7 +33,7 @@ def _patch_settings(monkeypatch):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PART 2: Expiration Tracking Engine
+# Expiration Tracking Engine
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -303,7 +303,7 @@ class TestParseDateEdgeCases:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PART 3: Compliance Pack Builder
+# Compliance Pack Builder
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -420,7 +420,7 @@ class TestFetchDocumentContentFallback:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PART 4: Audit Log Hardening
+# Audit Log Hardening
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -592,7 +592,7 @@ class TestAuditEndpointPagination:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PART 5: Endpoint Registration Verification
+# Endpoint Registration Verification
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -642,12 +642,12 @@ class TestExpirationExportPermissions:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PART 6: Backward Compatibility — ensure Phase 2-4 & Part 1 still healthy
+# Backward Compatibility — ensure earlier features still healthy
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class TestBackwardCompatibilityPhase5Parts:
-    """Verify that new Phase 5 Part 2-4 code doesn't break existing modules."""
+class TestBackwardCompatibilityPhase5:
+    """Verify that recent changes do not break existing modules."""
 
     def test_rbac_module_unchanged(self):
         from app.core.rbac import Role, Permission, normalize_role, role_has_permission

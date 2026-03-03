@@ -491,9 +491,7 @@ def get_current_billing(
     return get_subscription(org_id=org_id, user=user, token=token)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Phase 19 — Stripe Billing Endpoints
-# ══════════════════════════════════════════════════════════════════════════════
+# Stripe billing endpoints and webhook handling
 
 from app.core.stripe_billing import (
     create_checkout_session as _stripe_checkout,
@@ -504,7 +502,7 @@ from app.core.stripe_billing import (
 
 
 class Phase19CheckoutRequest(BaseModel):
-    """Phase 19 checkout request — uses Phase-18 plan names."""
+    """Checkout request — supports plan_name metadata from checkout."""
     org_id: str
     plan_name: str  # "FREE" | "PRO" | "ENTERPRISE"
 
@@ -517,7 +515,7 @@ def phase19_create_checkout(
     token: HTTPAuthorizationCredentials = Depends(security),
 ):
     """
-    Phase 19 Part 3 — Create a Stripe Checkout Session.
+    Create a Stripe Checkout Session.
     Accepts plan_name (FREE/PRO/ENTERPRISE) and returns a hosted checkout URL.
     503 if BILLING_ENABLED=false or Stripe not configured.
     400 if plan_name is unknown or price ID is unconfigured.
@@ -529,7 +527,7 @@ def phase19_create_checkout(
     sb = get_supabase(token.credentials)
     resolve_org_id_for_user(sb, user_id, org_id, request=request)
 
-    # Fetch existing Stripe customer ID from subscriptions table (Phase 19)
+    # Fetch existing Stripe customer ID from subscriptions table
     admin_sb = get_supabase_admin()
     existing_customer: str | None = None
     try:
@@ -571,12 +569,12 @@ def phase19_create_checkout(
 @router.post("/webhook19")
 async def phase19_stripe_webhook(request: Request):
     """
-    Phase 19 Part 3 — Stripe webhook receiver.
+    Stripe webhook receiver.
     Validates signature, then dispatches:
       • checkout.session.completed
       • customer.subscription.created / updated / deleted
       • invoice.payment_failed
-    Writes results into Phase-18 subscriptions table.
+    Writes results into subscriptions table.
     """
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
@@ -593,7 +591,7 @@ def phase19_subscription_status(
     token: HTTPAuthorizationCredentials = Depends(security),
 ):
     """
-    Phase 19 Part 3 — Return live Stripe subscription status for an org.
+    Return live Stripe subscription status for an org.
     Returns plan_name, stripe_status, current_period_end, is_active.
     Never raises on DB errors (fail-open).
     """
@@ -609,14 +607,14 @@ def phase19_subscription_status(
 
 
 @router.post("/trial")
-def phase19_start_trial(
+def phase_19start_trial(
     org_id: str | None = None,
     request: Request = None,
     user=Depends(get_current_user),
     token: HTTPAuthorizationCredentials = Depends(security),
 ):
     """
-    Phase 19 Part 6 — Manually start a 14-day PRO trial (admin-granted or Stripe-less).
+    Manually start a 14-day PRO trial (admin-granted or Stripe-less).
     Sets stripe_status=trialing, plan_name=PRO on the subscriptions row.
     """
     user_id = require_user_id(user)

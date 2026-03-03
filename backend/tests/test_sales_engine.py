@@ -1,5 +1,5 @@
 """
-Phase 22 Verification: Sales Engine + Enterprise Demo Workspace
+Sales Engine + Enterprise Demo Workspace Tests
 
 All tests are deterministic — no real DB / API / external calls.
 
@@ -469,7 +469,7 @@ class TestFrontendPublicRoutes:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestDemoDataExpansion:
-    """Verify demo-data.ts has been expanded for Phase 22."""
+    """Verify demo-data.ts has been expanded for sales engine changes."""
 
     @pytest.fixture(autouse=True)
     def _load_src(self):
@@ -513,7 +513,7 @@ class TestDemoDataExpansion:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestApiClientMethods:
-    """Verify api.ts has all Phase 22 methods."""
+    """Verify api.ts has all expected sales-related methods."""
 
     @pytest.fixture(autouse=True)
     def _load_src(self):

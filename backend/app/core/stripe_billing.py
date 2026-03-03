@@ -1,5 +1,5 @@
 """
-Phase 19 — Stripe Billing Integration (Production-Ready Foundation)
+Stripe billing integration (production-ready foundation)
 ===================================================================
 
 Responsibilities:
@@ -16,7 +16,7 @@ Responsibilities:
 All DB writes use the admin client to bypass RLS.
 All failures degrade gracefully (never crash the calling endpoint).
 
-Phase-18 plan names (FREE / PRO / ENTERPRISE) map 1-to-1 to Stripe Price IDs
+Plan names (FREE / PRO / ENTERPRISE) map 1-to-1 to Stripe Price IDs
 read from the config ENV variables STRIPE_PRICE_FREE / _PRO / _ENTERPRISE.
 """
 
@@ -51,7 +51,7 @@ def _price_map() -> Dict[str, str]:
     }
 
 
-# Plans-page tier (starter/growth/elite) → Phase 19 plan name (FREE/PRO/ENTERPRISE)
+# Plans-page tier (starter/growth/elite) → plan name (FREE/PRO/ENTERPRISE)
 _TIER_TO_PLAN_NAME: Dict[str, str] = {
     "starter": "FREE",
     "growth": "PRO",
@@ -229,7 +229,7 @@ def _handle_checkout_completed(session_data: Dict[str, Any]) -> None:
     """checkout.session.completed → write active subscription to subscriptions table."""
     metadata = session_data.get("metadata") or {}
     org_id = metadata.get("org_id")
-    # Support both Phase 19 (plan_name) and Plans page (plan_tier) metadata keys
+    # Support both plan_name and Plans page (plan_tier) metadata keys
     plan_name = metadata.get("plan_name", "").upper()
     if not plan_name:
         plan_tier = metadata.get("plan_tier", "").lower()
@@ -484,7 +484,7 @@ def start_pro_trial(org_id: str) -> Dict[str, Any]:
 # ─── Internal helpers ─────────────────────────────────────────────────────────
 
 def _upsert_subscription(org_id: str, data: Dict[str, Any]) -> None:
-    """Upsert into the Phase-18 subscriptions table keyed on org_id."""
+    """Upsert into the subscriptions table keyed on org_id."""
     try:
         sb = _admin_sb()
         # Remove None values to avoid overwriting existing DB fields with NULL

@@ -19,13 +19,13 @@
 ./scripts/run_all.sh
 ```
 
-## Phase 3 Part 1: Deterministic Retrieval Engine
+## Deterministic Retrieval Engine
 
 ### Automated Tests (Deterministic — no DB/API needed)
 
 ```bash
 cd backend && source venv/bin/activate
-python -m pytest tests/test_phase3_retrieval_engine.py -v
+python -m pytest tests/test_retrieval_engine.py -v
 ```
 
 **22 tests covering:**
@@ -45,14 +45,14 @@ python -m pytest tests/test_phase3_retrieval_engine.py -v
 | 11  | RetrievalResult             | `test_with_chunks`                       | Chunks → correct context_text, filenames, best_score     |
 | 12  | RetrievalResult             | `test_to_dict_no_debug`                  | No debug → debug_all_scores excluded from dict           |
 | 13  | RetrievalResult             | `test_to_dict_with_debug`                | Debug mode → debug_all_scores included in dict           |
-| 14  | ErrorResponseStructure      | `test_error_response_has_all_fields`     | Error response includes all Phase 3 metadata keys        |
-| 15  | QuestionItemSchema          | `test_phase3_fields_present`             | Phase 3 fields populated correctly                       |
-| 16  | QuestionItemSchema          | `test_phase3_fields_optional`            | Phase 3 fields default to None (backward compat)         |
+| 14  | ErrorResponseStructure      | `test_error_response_has_all_fields`     | Error response includes all retrieval metadata keys      |
+| 15  | QuestionItemSchema          | `test_retrieval_fields_present`          | Retrieval fields populated correctly                     |
+| 16  | QuestionItemSchema          | `test_retrieval_fields_optional`         | Retrieval fields default to None (backward compat)       |
 | 17  | ExcelCellComments           | `test_approved_cell_has_comment`         | Approved cells get comment with confidence + source      |
 | 18  | ExcelCellComments           | `test_rejected_cell_has_no_comment`      | Rejected cells get no comment                            |
-| 19  | ExpandedAuditSheet          | `test_audit_sheet_has_phase3_headers`    | Audit sheet has Confidence Score, Similarity, Model cols |
-| 20  | BackwardCompatibility       | `test_approved_still_writes`             | Phase 2 approved write behavior preserved                |
-| 21  | BackwardCompatibility       | `test_pending_still_blank`               | Phase 2 pending blank behavior preserved                 |
+| 19  | ExpandedAuditSheet          | `test_audit_sheet_has_retrieval_headers` | Audit sheet has Confidence Score, Similarity, Model cols |
+| 20  | BackwardCompatibility       | `test_approved_still_writes`             | Approved write behavior preserved                        |
+| 21  | BackwardCompatibility       | `test_pending_still_blank`               | Pending blank behavior preserved                         |
 | 22  | ConfigSettings              | `test_default_settings`                  | Threshold=0.55, top_k=5, debug=false, strict=false       |
 
 ### Database Migration
@@ -76,13 +76,13 @@ Run before first use:
 
 ---
 
-## Phase 2: Project Workspace + Knowledge Vault + Review → Export Gate
+## Export Gate: Project Workspace + Knowledge Vault + Review
 
 ### Automated Tests (Deterministic — no DB/API needed)
 
 ```bash
 cd backend && source venv/bin/activate
-python -m pytest tests/test_phase2_export_gate.py -v
+python -m pytest tests/test_export_gate.py -v
 ```
 
 **6 tests covering:**
@@ -253,7 +253,7 @@ export OPENAI_API_KEY="sk-your-key"
 5) Log out and revisit pages; you should be redirected to `/login` (no request storm of 401s).  
 6) No backend tracebacks (especially `parse_uuid` TypeError) while browsing those pages.
 
-## Phase 1A — Landing + Auth + Settings + Onboarding
+## Landing + Auth + Settings + Onboarding
 
 ### Public routes (no auth)
 
@@ -390,13 +390,13 @@ Open `/health` to quickly validate:
 
 ---
 
-## Phase 4: Multi-Run Intelligence + Institutional Memory Engine
+## Multi-Run Intelligence + Institutional Memory Engine
 
 ### Automated Tests (Deterministic — no DB/API needed)
 
 ```bash
 cd backend && source venv/bin/activate
-python -m pytest tests/test_phase4_multi_run_intelligence.py -v
+python -m pytest tests/test_multi_run_intelligence.py -v
 ```
 
 **43 tests covering:**
@@ -429,17 +429,17 @@ python -m pytest tests/test_phase4_multi_run_intelligence.py -v
 | 24  | DeltaTracking               | `test_case_insensitive_matching`              | "Is Fire Safety OK?" matches "is fire safety ok?"               |
 | 25  | DeltaTracking               | `test_empty_current`                          | Empty current → empty delta                                     |
 | 26  | DeltaTracking               | `test_normalize_question`                     | Whitespace + case normalization                                 |
-| 27  | QuestionItemPhase4          | `test_phase4_fields_present`                  | answer_origin, reused_from, change_type all set                 |
-| 28  | QuestionItemPhase4          | `test_phase4_fields_optional`                 | All Phase 4 fields default to None                              |
-| 29  | QuestionItemPhase4          | `test_reused_question_item`                   | Reused item has model_used="reused", tokens=0                   |
-| 30  | QuestionItemPhase4          | `test_suggested_question_item`                | Suggested item has correct origin + score                       |
-| 31  | AuditSheetPhase4            | `test_audit_sheet_has_answer_origin_header`   | Export audit sheet has "Answer Origin" column                   |
-| 32  | AuditSheetPhase4            | `test_audit_sheet_default_origin_is_generated`| Missing origin defaults to "generated"                          |
-| 33  | GenerationPhase4Fields      | `test_error_response_has_phase4_fields`       | Error responses include Phase 4 keys                            |
-| 34  | GenerationPhase4Fields      | `test_not_found_response_has_phase4_fields`   | NOT FOUND responses include Phase 4 keys                        |
-| 35  | ConfigPhase4                | `test_phase4_default_settings`                | All 5 Phase 4 config defaults correct                           |
-| 36  | ConfigPhase4                | `test_thresholds_ordered`                     | SUGGEST < EXACT, both in (0,1]                                  |
-| 37  | BackwardCompatibility       | `test_phase3_question_item_still_works`       | Phase 3 fields unchanged                                        |
+| 27  | QuestionItemMultiRun        | `test_multi_run_fields_present`               | answer_origin, reused_from, change_type all set                 |
+| 28  | QuestionItemMultiRun        | `test_multi_run_fields_optional`              | All multi-run fields default to None                            |
+| 29  | QuestionItemMultiRun        | `test_reused_question_item`                   | Reused item has model_used="reused", tokens=0                   |
+| 30  | QuestionItemMultiRun        | `test_suggested_question_item`                | Suggested item has correct origin + score                       |
+| 31  | AuditSheetMultiRun          | `test_audit_sheet_has_answer_origin_header`   | Export audit sheet has "Answer Origin" column                   |
+| 32  | AuditSheetMultiRun          | `test_audit_sheet_default_origin_is_generated`| Missing origin defaults to "generated"                          |
+| 33  | GenerationMultiRunFields    | `test_error_response_has_multi_run_fields`    | Error responses include multi-run keys                          |
+| 34  | GenerationMultiRunFields    | `test_not_found_response_has_multi_run_fields`| NOT FOUND responses include multi-run keys                      |
+| 35  | ConfigMultiRun              | `test_multi_run_default_settings`             | All 5 multi-run config defaults correct                         |
+| 36  | ConfigMultiRun              | `test_thresholds_ordered`                     | SUGGEST < EXACT, both in (0,1]                                  |
+| 37  | BackwardCompatibility       | `test_retrieval_question_item_still_works`    | Retrieval fields unchanged                                      |
 | 38  | BackwardCompatibility       | `test_approved_answer_still_written`          | Approved → cell gets answer (no regression)                     |
 | 39  | BackwardCompatibility       | `test_rejected_answer_not_written`            | Rejected → cell stays blank (no regression)                     |
 | 40  | RunComparisonDelta          | `test_comparison_identifies_removed_questions`| Removed questions detected separately                           |

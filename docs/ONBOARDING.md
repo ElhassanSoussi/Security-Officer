@@ -1,4 +1,4 @@
-# New Customer Onboarding Guide (Phase 26)
+# New Customer Onboarding Guide
 
 This app includes a lightweight, modern onboarding guide for **first-time organizations**.
 It is **not** a wizard. It uses a compact banner/card that points the user to the next step.

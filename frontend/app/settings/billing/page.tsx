@@ -1,13 +1,7 @@
 "use client";
 
-/**
- * Phase 19 — Billing Settings Page  (/settings/billing)
- *
- * Sections:
- *  1. Current subscription card — plan badge, Stripe status badge, renewal date
- *  2. Usage this month — from getUsageSummary (reuses Phase-18 data)
- *  3. Plans comparison table — FREE / PRO / ENTERPRISE
- *  4. Upgrade CTA → createStripeCheckout
+/*
+ * Billing Settings Page (/settings/billing)
  */
 
 import { useEffect, useState, useCallback } from "react";
@@ -266,16 +260,18 @@ export default function BillingPage() {
                         <CreditCard className="h-4 w-4 text-slate-500" />
                         Current Subscription
                     </CardTitle>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={load}
-                        disabled={loading}
-                        className="gap-1 text-xs"
-                    >
-                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                        Refresh
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={load}
+                            disabled={loading}
+                            className="gap-1 text-xs"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                            Refresh
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -447,7 +443,7 @@ export default function BillingPage() {
                 </Link>
             </div>
 
-            {/* ── Enterprise Contact Modal (Phase 22) ── */}
+            {/* ── Enterprise Contact Modal ── */}
             <EnterpriseContactModal
                 open={enterpriseModalOpen}
                 onOpenChange={setEnterpriseModalOpen}

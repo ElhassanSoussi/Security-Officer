@@ -1,5 +1,5 @@
 """
-Phase 2 Verification: Export Gate — approved-only write behavior.
+Export Gate — approved-only write behavior.
 
 This test proves that:
 1. ExcelAgent.generate_excel writes approved answers to cells

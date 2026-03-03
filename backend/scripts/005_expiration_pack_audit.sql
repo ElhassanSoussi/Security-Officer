@@ -1,4 +1,4 @@
--- Phase 5 Part 2-4 Migration: Expiration Tracking + Compliance Packs + Audit Events Index
+-- Expiration Tracking, Compliance Packs, and Audit Events Index Migration
 -- Safe: all operations are idempotent (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS)
 
 -- ═══════════════════════════════════════════════════════════════════════════════

@@ -1,5 +1,5 @@
 -- =============================================================================
--- COMBINED Stripe Billing Migration
+-- COMBINED Stripe and Usage Metrics Migration
 -- Run this ENTIRE block in Supabase SQL Editor → Click "Run"
 -- Safe to re-run (all operations are idempotent)
 -- =============================================================================
@@ -92,7 +92,7 @@ CREATE POLICY "billing_events_select_member"
 CREATE INDEX IF NOT EXISTS billing_events_org_idx        ON billing_events(org_id);
 CREATE INDEX IF NOT EXISTS billing_events_stripe_evt_idx ON billing_events(stripe_event_id);
 
--- ─── 5. Create USAGE_METRICS table (Phase 18) ───────────────────────────────
+-- ─── 5. Create USAGE_METRICS table (usage metrics) ──────────────────────────
 CREATE TABLE IF NOT EXISTS usage_metrics (
     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id       text NOT NULL,

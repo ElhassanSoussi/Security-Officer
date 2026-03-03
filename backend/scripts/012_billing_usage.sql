@@ -1,4 +1,4 @@
--- Phase 18: Subscription Plans + Usage Metrics
+-- Subscription Plans and Usage Metrics Migration
 -- Run in Supabase SQL Editor (once).
 
 -- ─── 1. subscriptions ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 """
-Phase 5 Verification: Role-Based Access Control (RBAC) — Hard Security Layer.
+Role-Based Access Control (RBAC) — Hard Security Layer Tests
 
 Tests cover:
   1. Role enum and normalization
@@ -331,7 +331,7 @@ class TestRoleHierarchy:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestBackwardCompatibility:
-    """Verify existing Phase 2-4 features are unaffected by RBAC module."""
+    """Verify existing document/project features are unaffected by RBAC module."""
 
     def test_question_item_schema_unchanged(self):
         from app.models.schemas import QuestionItem
@@ -345,17 +345,17 @@ class TestBackwardCompatibility:
             sources=["doc.pdf"],
         )
         assert q.question == "Test?"
-        # Phase 4 fields still present
+        # Existing fields still present
         assert q.answer_origin is None
         assert q.change_type is None
 
     def test_existing_settings_preserved(self):
         from app.core.config import get_settings
         s = get_settings()
-        # Phase 3 settings
+        # Previous settings
         assert hasattr(s, "RETRIEVAL_SIMILARITY_THRESHOLD")
         assert hasattr(s, "STRICT_MODE")
-        # Phase 4 settings
+        # Previous settings
         assert hasattr(s, "REUSE_EXACT_THRESHOLD")
         assert hasattr(s, "REUSE_ENABLED")
 

@@ -1,7 +1,7 @@
 "use client";
 
-/**
- * Phase 19 — Billing Past-Due Banner
+/*
+ * Billing Past-Due Banner
  *
  * Fetches the org's Stripe subscription status on mount.
  * Renders a sticky top banner when stripe_status === "past_due".

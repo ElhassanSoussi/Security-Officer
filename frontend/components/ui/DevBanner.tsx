@@ -1,5 +1,5 @@
 /**
- * Phase 12 Part 1: Development mode ribbon banner.
+ * Development mode ribbon banner.
  *
  * Renders a thin, fixed banner at the top of the viewport when the app
  * is running in development mode. Hidden in production.

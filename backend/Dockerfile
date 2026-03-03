@@ -1,4 +1,4 @@
-# Phase 12 Part 8 + Phase 20 Part 4: Production-grade Backend Dockerfile
+# Production-grade Backend Dockerfile
 # Multi-stage build — slim image, non-root user, no dev dependencies
 
 # ── Stage 1: Install dependencies ──────────────────────────────────────────────

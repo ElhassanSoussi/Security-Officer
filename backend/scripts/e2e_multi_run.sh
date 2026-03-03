@@ -14,7 +14,7 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo "🚀 Starting Phase 4.3 E2E Verification..."
+echo "🚀 Starting multi-run E2E verification..."
 
 # 1. Create Dummy Files
 echo "Files > Creating dummy test files..."
@@ -125,7 +125,7 @@ else
 fi
 
 echo "--------------------------------"
-echo -e "${GREEN}🏆 PHASE 4.3 E2E TEST PASSED${NC}"
+echo -e "${GREEN}🏆 MULTI-RUN E2E TEST PASSED${NC}"
 
 # Cleanup
 rm $DOC_FILENAME $XLSX_FILENAME exported_result.xlsx

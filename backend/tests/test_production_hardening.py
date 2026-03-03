@@ -1,10 +1,10 @@
 """
-Phase 23 Verification: Production Hardening + Security Cleanup
+Production Hardening + Security Cleanup Tests
 
 All tests are deterministic — no real DB / API / external calls.
 
 Tests cover:
- 1. RLS — phase23 migration SQL file exists
+ 1. RLS — production hardening migration SQL file exists
  2. RLS — migration drops overly-permissive anon_insert_sales_leads policy
  3. RLS — migration creates restricted anon insert policy
  4. RLS — migration creates anon deny SELECT policy
@@ -57,13 +57,13 @@ Tests cover:
 51. MainApp — /health endpoint still defined
 52. MainApp — /health/ready endpoint still defined
 53. MainApp — /health/full endpoint is GET method
-54. Verify — VERIFY.md contains Phase 23 section
-55. Verify — VERIFY.md Phase 23 mentions RLS verified
-56. Verify — VERIFY.md Phase 23 mentions rate limiting active
-57. Verify — VERIFY.md Phase 23 mentions production banner hidden
-58. Migration — phase23 migration restricts source column values
-59. Migration — phase23 migration requires email or company_name
-60. Migration — phase23 migration documents vector extension schema
+54. Verify — VERIFY.md contains production hardening section
+55. Verify — VERIFY.md production hardening mentions RLS verified
+56. Verify — VERIFY.md production hardening mentions rate limiting active
+57. Verify — VERIFY.md production hardening mentions production banner hidden
+58. Migration — hardening migration restricts source column values
+59. Migration — hardening migration requires email or company_name
+60. Migration — hardening migration documents vector extension schema
 """
 
 import ast
@@ -94,7 +94,7 @@ for var in ("SUPABASE_URL", "SUPABASE_KEY", "SUPABASE_JWT_SECRET", "SUPABASE_SER
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestRLSSecurityMigration:
-    """Verify Phase 23 migration SQL exists and contains proper security policies."""
+    """Verify production hardening migration SQL exists and contains proper security policies."""
 
     MIGRATION_FILE = SCRIPTS_DIR / "016_production_hardening_rls.sql"
 
@@ -428,11 +428,11 @@ class TestHealthFullEndpoint:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Part 6: VERIFY.md Phase 23 Section (Tests 54-57)
+# Part 6: VERIFY.md Production Hardening Section (Tests 54-57)
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestVerifyMD:
-    """Verify VERIFY.md has Phase 23 checklist."""
+    """Verify VERIFY.md has production hardening checklist."""
 
     @pytest.fixture(autouse=True)
     def _load_verify(self):
@@ -440,7 +440,7 @@ class TestVerifyMD:
         self.verify_content = verify_file.read_text() if verify_file.exists() else ""
 
     def test_54_verify_has_phase23_section(self):
-        assert "Phase 23" in self.verify_content
+        assert "Production Hardening" in self.verify_content or "production hardening" in self.verify_content.lower()
 
     def test_55_verify_mentions_rls_verified(self):
         assert "RLS" in self.verify_content and "verif" in self.verify_content.lower()

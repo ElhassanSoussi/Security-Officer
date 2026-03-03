@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OnboardingChecklist — Phase 14 Part 1
+ * OnboardingChecklist component.
  * Persistent, collapsible onboarding checklist.
  * Auto-derives progress from live stats; can be dismissed per-scope.
  */

@@ -6,6 +6,7 @@ import { DevBanner } from "@/components/ui/DevBanner";
 import { PlanLimitModal } from "@/components/PlanLimitModal";
 import { SubscriptionInactiveModal } from "@/components/SubscriptionInactiveModal";
 import { SentryInit } from "@/components/SentryInit";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
@@ -54,8 +55,9 @@ export default function RootLayout({
     }
 
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
             <body className="antialiased bg-slate-50 min-h-screen">
+                <ThemeProvider>
                 <DevBanner />
                 <EmailVerificationBanner />
                 <ToastProvider>
@@ -64,6 +66,7 @@ export default function RootLayout({
                     <SubscriptionInactiveModal />
                     <SentryInit />
                 </ToastProvider>
+                </ThemeProvider>
             </body>
         </html>
     );

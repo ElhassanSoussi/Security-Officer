@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * RunComparePanel — Phase 15 Part 5
+ * RunComparePanel component.
  * Dropdown to select a "compare to" run, then shows delta indicators:
  *   NEW / REMOVED / MODIFIED (answer changed) / UNCHANGED
  *   ↑ confidence improved  ↓ confidence dropped

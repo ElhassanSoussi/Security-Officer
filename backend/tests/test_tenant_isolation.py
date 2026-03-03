@@ -1,5 +1,5 @@
 """
-Phase 18 Verification: Multi-Tenant Isolation + Billing Foundations
+Multi-Tenant Isolation + Billing Foundations Tests
 
 All tests are deterministic — no real DB / API / OpenAI calls needed.
 

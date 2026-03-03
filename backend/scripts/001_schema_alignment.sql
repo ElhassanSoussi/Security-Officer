@@ -1,4 +1,4 @@
--- Phase 1B schema alignment (idempotent)
+-- Schema alignment migration (idempotent)
 -- Purpose: eliminate drift warnings in local/prod by aligning the DB schema
 -- with current backend expectations used by Settings, Audit, Runs, and Billing.
 --

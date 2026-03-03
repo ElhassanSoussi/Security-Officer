@@ -1,8 +1,8 @@
--- Phase 6 Migration: Project Onboarding + Production Indexes
+-- Productization: Project Onboarding and Production Indexes Migration
 -- Safe: all operations are idempotent (IF NOT EXISTS)
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- Part 2: Project Onboarding Checklist
+-- Project Onboarding Checklist
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS project_onboarding (
@@ -32,7 +32,7 @@ BEGIN
 END $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- Part 4: Performance indexes for overview queries
+-- Performance indexes for overview queries
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 CREATE INDEX IF NOT EXISTS idx_runs_project_created

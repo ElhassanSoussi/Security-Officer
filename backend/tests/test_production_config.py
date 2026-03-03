@@ -1,5 +1,5 @@
 """
-Phase 20 Verification: Production Deployment + CI/CD + Observability
+Production Deployment + CI/CD + Observability Tests
 
 All tests are deterministic — no real DB / API / Docker calls.
 

@@ -5,6 +5,15 @@ export type { Run, Project, DashboardStats };
 
 const API_BASE = config.apiUrl;
 
+export interface AccountProfile {
+    user_id: string;
+    email: string | null;
+    display_name: string | null;
+    public_email: string | null;
+    avatar_url: string | null;
+    theme_preference: "light" | "dark" | "system";
+}
+
 export class ApiClient {
     private static didRedirectUnauthorized = false;
     private static nonRetryable5xxCodes = new Set([
@@ -153,13 +162,13 @@ export class ApiClient {
                 // Keep default detail when body is not JSON.
             }
 
-            // Phase 18: Handle plan limit exceeded — fire global event for modal
+            // Handle plan limit exceeded — fire global event for modal
             if (res.status === 402 && code === "PLAN_LIMIT_REACHED" && typeof window !== "undefined") {
                 const planLimitDetail = rawDetail && typeof rawDetail === "object" ? rawDetail : { error: "PLAN_LIMIT_REACHED" };
                 window.dispatchEvent(new CustomEvent("plan:limit_reached", { detail: planLimitDetail }));
             }
 
-            // Phase 19: Handle subscription inactive — fire global event for blocking modal
+            // Handle subscription inactive — fire global event for blocking modal
             if (res.status === 402 && code === "SUBSCRIPTION_INACTIVE" && typeof window !== "undefined") {
                 const subDetail = rawDetail && typeof rawDetail === "object" ? rawDetail : { error: "SUBSCRIPTION_INACTIVE" };
                 window.dispatchEvent(new CustomEvent("subscription:inactive", { detail: subDetail }));
@@ -192,7 +201,19 @@ export class ApiClient {
         }, token);
     }
 
-    // --- Phase 3: Auth & Orgs ---
+    // --- Generic Helpers ---
+    static async patch<T>(endpoint: string, body: any, token?: string): Promise<T> {
+        return this.fetch<T>(endpoint, {
+            method: "PATCH",
+            body: JSON.stringify(body)
+        }, token);
+    }
+
+    static async delete<T>(endpoint: string, token?: string): Promise<T> {
+        return this.fetch<T>(endpoint, { method: "DELETE" }, token);
+    }
+
+    // --- Auth & Orgs ---
     static async getMyOrgs(token?: string): Promise<any[]> {
         return this.fetch("/orgs", {}, token);
     }
@@ -222,10 +243,7 @@ export class ApiClient {
         return this.post<any>("/orgs/onboard", {}, token);
     }
 
-    // --- Existing Methods (Updated to accept token?) ---
-    // For proper SaaS, ALL methods need the token. 
-    // Refactoring all methods to take optional token is safest for migration.
-
+    // --- Runs & Projects ---
     static async getRuns(orgId: string, projectId?: string, limit: number = 50, token?: string): Promise<Run[]> {
         const params = new URLSearchParams();
         params.append("org_id", orgId);
@@ -233,6 +251,18 @@ export class ApiClient {
         params.append("limit", limit.toString());
 
         return this.fetch<Run[]>(`/runs?${params.toString()}`, {}, token);
+    }
+
+    static async getRun(runId: string, token?: string): Promise<Run> {
+        return this.fetch<Run>(`/runs/${runId}`, {}, token);
+    }
+
+    static async getRunAudits(runId: string, token?: string): Promise<any[]> {
+        return this.fetch<any[]>(`/runs/${runId}/audits`, {}, token);
+    }
+
+    static async updateAudit(runId: string, auditId: string, answerText: string, token?: string): Promise<any> {
+        return this.patch<any>(`/runs/${runId}/audits/${auditId}`, { answer_text: answerText }, token);
     }
 
     static async getProjects(orgId: string, token?: string): Promise<Project[]> {
@@ -299,7 +329,7 @@ export class ApiClient {
         }
     }
 
-    // Note: uploadDocument uses FormData, so don't set Content-Type JSON
+    // --- Document Upload ---
     static async uploadDocument(
         file: File,
         orgId: string,
@@ -339,29 +369,62 @@ export class ApiClient {
         return res.json();
     }
 
-    static async getRun(runId: string, token?: string): Promise<Run> {
-        return this.fetch(`/runs/${runId}`, {}, token);
-    }
-
-    static async getRunAudits(runId: string, token?: string): Promise<any[]> {
-        try {
-            return await this.fetch(`/runs/${runId}/audits`, {}, token);
-        } catch {
-            return [];
-        }
-    }
-
-    static async updateAudit(runId: string, auditId: string, answerText: string, token?: string): Promise<any> {
-        return this.fetch(`/runs/${runId}/audits/${auditId}`, {
-            method: "PATCH",
-            body: JSON.stringify({ answer_text: answerText })
-        }, token);
-    }
-
+    // --- Project Documents ---
     static async getDocuments(orgId: string, projectId?: string | null, token?: string): Promise<any[]> {
         let url = `/documents?org_id=${orgId}`;
         if (projectId) url += `&project_id=${projectId}`;
         return this.fetch(url, {}, token);
+    }
+
+    // --- Project Documents (per-project helpers) ---
+    static async getProjectDocuments(projectId: string, token?: string): Promise<any[]> {
+        return this.fetch<any[]>(`/projects/${projectId}/documents`, {}, token);
+    }
+
+    static async uploadProjectDocument(
+        projectId: string,
+        file: File,
+        token?: string
+    ): Promise<any> {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const headers: HeadersInit = {};
+        let authToken = token;
+        if (!authToken) {
+            try {
+                const supabase = createClient();
+                const { data: { session } } = await supabase.auth.getSession();
+                authToken = session?.access_token || undefined;
+            } catch {
+                authToken = undefined;
+            }
+        }
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+        const res = await fetch(`${API_BASE}/projects/${projectId}/documents`, {
+            method: "POST",
+            body: formData,
+            headers,
+        });
+
+        if (!res.ok) {
+            let detail = res.statusText;
+            try {
+                const err = await res.json();
+                detail = err?.detail || detail;
+            } catch { /* ignore */ }
+            throw new Error(`Upload Failed: ${detail}`);
+        }
+        return res.json();
+    }
+
+    static async deleteProjectDocument(
+        projectId: string,
+        documentId: string,
+        token?: string
+    ): Promise<any> {
+        return this.delete<any>(`/projects/${projectId}/documents/${documentId}`, token);
     }
 
     static async downloadRun(runId: string, filename: string = "export.xlsx", token?: string): Promise<void> {
@@ -401,10 +464,6 @@ export class ApiClient {
         await this._handleBlobDownload(res, filename);
     }
 
-    // ... generateExport similarly needs token
-
-
-    // For Immediate Export (Run Page)
     static async generateExport(
         file: File,
         answers: any[],
@@ -481,7 +540,38 @@ export class ApiClient {
         document.body.removeChild(a);
     }
 
-    // --- Billing / Plans ---
+    // --- Settings: Profile & Org ---
+    static async getProfile(token?: string): Promise<any> {
+        return this.fetch<any>("/settings/profile", {}, token);
+    }
+
+    static async updateProfile(payload: { full_name?: string; phone?: string; title?: string }, token?: string): Promise<any> {
+        return this.fetch<any>("/settings/profile", {
+            method: "PUT",
+            body: JSON.stringify(payload),
+        }, token);
+    }
+
+    static async getOrgSettings(orgId: string, token?: string): Promise<any> {
+        const params = new URLSearchParams({ org_id: orgId });
+        return this.fetch<any>(`/settings/org?${params.toString()}`, {}, token);
+    }
+
+    static async updateOrgSettings(orgId: string, payload: Record<string, any>, token?: string): Promise<any> {
+        const params = new URLSearchParams({ org_id: orgId });
+        return this.patch<any>(`/settings/org?${params.toString()}`, payload, token);
+    }
+
+    static async inviteMember(orgId: string, email: string, role: string, token?: string): Promise<any> {
+        return this.post<any>("/settings/org/invite", { org_id: orgId, email, role }, token);
+    }
+
+    static async removeMember(orgId: string, userId: string, token?: string): Promise<any> {
+        const params = new URLSearchParams({ org_id: orgId });
+        return this.delete<any>(`/settings/org/members/${userId}?${params.toString()}`, token);
+    }
+
+    // --- Stripe Billing ---
     static async getPlans(token?: string): Promise<any[]> {
         return this.fetch<any[]>("/billing/plans", {}, token);
     }
@@ -509,58 +599,75 @@ export class ApiClient {
         return this.post<{ url: string }>(`/billing/portal?org_id=${orgId}`, {}, token);
     }
 
-    // --- Generic Helpers ---
-    static async patch<T>(endpoint: string, body: any, token?: string): Promise<T> {
-        return this.fetch<T>(endpoint, {
-            method: "PATCH",
-            body: JSON.stringify(body)
-        }, token);
-    }
-
-    static async delete<T>(endpoint: string, token?: string): Promise<T> {
-        return this.fetch<T>(endpoint, { method: "DELETE" }, token);
-    }
-
-    // --- Settings & Members ---
-    static async getOrgSettings(orgId: string, token?: string): Promise<any> {
-        return this.fetch<any>(`/settings/org?org_id=${orgId}`, {}, token);
-    }
-
-    static async updateOrgSettings(
+    static async createStripeCheckout(
         orgId: string,
-        payload: { name?: string; trade_type?: string; company_size?: string },
-        token?: string
-    ): Promise<any> {
-        return this.fetch<any>(`/settings/org?org_id=${orgId}`, {
-            method: "PUT",
-            body: JSON.stringify(payload),
+        planName: "FREE" | "PRO" | "ENTERPRISE",
+        token?: string,
+    ): Promise<{ url: string; plan_name: string }> {
+        return this.post<{ url: string; plan_name: string }>("/billing/checkout", {
+            org_id: orgId,
+            plan_name: planName,
         }, token);
     }
 
-    static async updateOrgName(orgId: string, name: string, token?: string): Promise<any> {
-        return this.updateOrgSettings(orgId, { name }, token);
+    static async getSubscriptionStatus(orgId: string, token?: string): Promise<{
+        org_id: string;
+        plan_name: string;
+        stripe_status: string | null;
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        current_period_end: string | null;
+        is_active: boolean;
+    }> {
+        const params = new URLSearchParams({ org_id: orgId });
+        try {
+            return await this.fetch(`/billing/status?${params}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return {
+                org_id: orgId,
+                plan_name: "FREE",
+                stripe_status: null,
+                stripe_customer_id: null,
+                stripe_subscription_id: null,
+                current_period_end: null,
+                is_active: true,
+            };
+        }
     }
 
-    static async getProfile(token?: string): Promise<any> {
-        return this.fetch<any>("/settings/profile", {}, token);
+    static async startProTrial(orgId: string, token?: string): Promise<any> {
+        return this.post<any>(`/billing/trial?org_id=${orgId}`, {}, token);
     }
 
-    static async updateProfile(
-        payload: { full_name?: string; phone?: string; title?: string },
-        token?: string
-    ): Promise<any> {
-        return this.fetch<any>("/settings/profile", {
-            method: "PUT",
-            body: JSON.stringify(payload),
-        }, token);
-    }
-
-    static async inviteMember(orgId: string, email: string, role: string = "viewer", token?: string): Promise<any> {
-        return this.post<any>(`/settings/org/invite?org_id=${orgId}`, { email, role }, token);
-    }
-
-    static async removeMember(orgId: string, userId: string, token?: string): Promise<any> {
-        return this.delete<any>(`/settings/org/members/${userId}?org_id=${orgId}`, token);
+    // --- Usage Summary ---
+    static async getUsageSummary(orgId: string, token?: string): Promise<{
+        runs_this_month: number;
+        documents_total: number;
+        memory_entries_total: number;
+        evidence_exports_total: number;
+        plan: string;
+        limits: {
+            plan_name: string;
+            max_runs_per_month: number;
+            max_documents: number;
+            max_memory_entries: number;
+        };
+    }> {
+        const params = new URLSearchParams({ org_id: orgId });
+        try {
+            return await this.fetch(`/runs/usage?${params.toString()}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return {
+                runs_this_month: 0,
+                documents_total: 0,
+                memory_entries_total: 0,
+                evidence_exports_total: 0,
+                plan: "FREE",
+                limits: { plan_name: "FREE", max_runs_per_month: 10, max_documents: 25, max_memory_entries: 100 },
+            };
+        }
     }
 
     // --- Audit Log ---
@@ -587,58 +694,7 @@ export class ApiClient {
         }, token);
     }
 
-    // --- Phase 2: Project Documents ---
-    static async getProjectDocuments(projectId: string, token?: string): Promise<any[]> {
-        return this.fetch<any[]>(`/projects/${projectId}/documents`, {}, token);
-    }
-
-    static async uploadProjectDocument(
-        projectId: string,
-        file: File,
-        token?: string
-    ): Promise<any> {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const headers: HeadersInit = {};
-        let authToken = token;
-        if (!authToken) {
-            try {
-                const supabase = createClient();
-                const { data: { session } } = await supabase.auth.getSession();
-                authToken = session?.access_token || undefined;
-            } catch {
-                authToken = undefined;
-            }
-        }
-        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
-
-        const res = await fetch(`${API_BASE}/projects/${projectId}/documents`, {
-            method: "POST",
-            body: formData,
-            headers,
-        });
-
-        if (!res.ok) {
-            let detail = res.statusText;
-            try {
-                const err = await res.json();
-                detail = err?.detail || detail;
-            } catch { /* ignore */ }
-            throw new Error(`Upload Failed: ${detail}`);
-        }
-        return res.json();
-    }
-
-    static async deleteProjectDocument(
-        projectId: string,
-        documentId: string,
-        token?: string
-    ): Promise<any> {
-        return this.delete<any>(`/projects/${projectId}/documents/${documentId}`, token);
-    }
-
-    // --- Phase 2: Bulk Review & Export Readiness ---
+    // --- Bulk Review & Export Readiness ---
     static async bulkReviewAudits(
         runId: string,
         reviewStatus: "approved" | "rejected",
@@ -662,7 +718,7 @@ export class ApiClient {
         return this.fetch(`/runs/${runId}/export-readiness`, {}, token);
     }
 
-    // --- Phase 6: Project Overview & Onboarding ---
+    // --- Project Overview & Onboarding ---
     static async getProjectOverview(projectId: string, token?: string): Promise<ProjectOverview> {
         return this.fetch<ProjectOverview>(`/projects/${projectId}/overview`, {}, token);
     }
@@ -675,8 +731,7 @@ export class ApiClient {
         return this.post<any>(`/projects/${projectId}/onboarding/complete`, { step }, token);
     }
 
-    // --- Phase 15: Compliance Intelligence ---
-
+    // --- Compliance Intelligence ---
     static async getComplianceHealth(
         orgId: string,
         token?: string,
@@ -699,8 +754,7 @@ export class ApiClient {
         return this.fetch<any>(`/runs/${runId}/compare/${otherId}`, {}, token);
     }
 
-    // --- Phase 17: Evidence Vault ---
-
+    // --- Evidence Vault ---
     static async generateEvidence(runId: string, token?: string): Promise<{ blob: Blob; hash: string; filename: string }> {
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -743,90 +797,11 @@ export class ApiClient {
         return this.post<any>(`/runs/${runId}/unlock`, {}, token);
     }
 
-    // --- Phase 19: Stripe Billing ---
-
-    /** Create a Stripe Checkout Session for plan_name (FREE/PRO/ENTERPRISE). */
-    static async createStripeCheckout(
-        orgId: string,
-        planName: "FREE" | "PRO" | "ENTERPRISE",
-        token?: string,
-    ): Promise<{ url: string; plan_name: string }> {
-        return this.post<{ url: string; plan_name: string }>("/billing/checkout", {
-            org_id: orgId,
-            plan_name: planName,
-        }, token);
-    }
-
-    /** Get live Stripe subscription status for an org. */
-    static async getSubscriptionStatus(orgId: string, token?: string): Promise<{
-        org_id: string;
-        plan_name: string;
-        stripe_status: string | null;
-        stripe_customer_id: string | null;
-        stripe_subscription_id: string | null;
-        current_period_end: string | null;
-        is_active: boolean;
-    }> {
-        const params = new URLSearchParams({ org_id: orgId });
-        try {
-            return await this.fetch(`/billing/status?${params}`, {}, token);
-        } catch (e: any) {
-            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
-            return {
-                org_id: orgId,
-                plan_name: "FREE",
-                stripe_status: null,
-                stripe_customer_id: null,
-                stripe_subscription_id: null,
-                current_period_end: null,
-                is_active: true,
-            };
-        }
-    }
-
-    /** Start a 14-day PRO trial for an org (admin-granted or Stripe-less). */
-    static async startProTrial(orgId: string, token?: string): Promise<any> {
-        return this.post<any>(`/billing/trial?org_id=${orgId}`, {}, token);
-    }
-
-    // --- Phase 18: Usage Summary ---
-    static async getUsageSummary(orgId: string, token?: string): Promise<{
-        runs_this_month: number;
-        documents_total: number;
-        memory_entries_total: number;
-        evidence_exports_total: number;
-        plan: string;
-        limits: {
-            plan_name: string;
-            max_runs_per_month: number;
-            max_documents: number;
-            max_memory_entries: number;
-        };
-    }> {
-        const params = new URLSearchParams({ org_id: orgId });
-        try {
-            return await this.fetch(`/runs/usage?${params.toString()}`, {}, token);
-        } catch (e: any) {
-            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
-            return {
-                runs_this_month: 0,
-                documents_total: 0,
-                memory_entries_total: 0,
-                evidence_exports_total: 0,
-                plan: "FREE",
-                limits: { plan_name: "FREE", max_runs_per_month: 10, max_documents: 25, max_memory_entries: 100 },
-            };
-        }
-    }
-
-    // --- Phase 21: SOC2 Readiness ---
-
-    /** Download Access Audit Report (JSON). */
+    // --- SOC2 Readiness ---
     static async getAccessReport(orgId: string, token?: string): Promise<any> {
         return this.fetch<any>(`/orgs/${orgId}/access-report?format=json`, {}, token);
     }
 
-    /** Download Access Audit Report as CSV blob. */
     static async downloadAccessReportCSV(orgId: string, token?: string): Promise<void> {
         const headers: Record<string, string> = {};
         let authToken = token;
@@ -859,14 +834,11 @@ export class ApiClient {
         document.body.removeChild(a);
     }
 
-    /** Trigger data retention job (admin only). */
     static async triggerRetentionJob(orgId: string, dryRun: boolean = false, token?: string): Promise<any> {
         return this.post<any>(`/admin/run-retention-job?org_id=${orgId}&dry_run=${dryRun}`, {}, token);
     }
 
-    // --- Phase 22: Sales Engine ---
-
-    /** Submit contact/lead form (public, no auth). */
+    // --- Sales Engine ---
     static async submitContactForm(payload: {
         company_name: string;
         name: string;
@@ -878,27 +850,23 @@ export class ApiClient {
         return this.post<{ status: string; message: string }>("/contact", payload);
     }
 
-    /** Track enterprise interest click. */
     static async trackEnterpriseInterest(orgId?: string, source: string = "billing_page", token?: string): Promise<any> {
         return this.post<any>("/track/enterprise-interest", { org_id: orgId, source }, token);
     }
 
-    /** Track trial lifecycle event. */
     static async trackTrialEvent(orgId: string, eventType: string, token?: string): Promise<any> {
         return this.post<any>("/track/trial-event", { org_id: orgId, event_type: eventType }, token);
     }
 
-    /** Get sales analytics (admin only). */
     static async getSalesAnalytics(token?: string): Promise<any> {
         return this.fetch<any>("/admin/sales-analytics", {}, token);
     }
 
-    /** Reset demo workspace (admin only). */
     static async resetDemoWorkspace(token?: string): Promise<any> {
         return this.post<any>("/admin/demo-reset", {}, token);
     }
 
-    // --- Phase 26: Onboarding ---
+    // --- Onboarding ---
     static async getOnboardingState(token?: string): Promise<{ onboarding_completed: boolean; onboarding_step: number }> {
         return this.fetch("/org/onboarding", {}, token);
     }
@@ -918,5 +886,48 @@ export class ApiClient {
         exports_count: number;
     }> {
         return this.fetch("/org/metrics", {}, token);
+    }
+
+    // --- Account Profile & Appearance ---
+    static async getAccountProfile(token?: string): Promise<AccountProfile> {
+        return this.fetch<AccountProfile>("/account/profile", {}, token);
+    }
+
+    static async patchAccountProfile(
+        payload: { display_name?: string; public_email?: string; theme_preference?: string },
+        token?: string,
+    ): Promise<AccountProfile> {
+        return this.patch<AccountProfile>("/account/profile", payload, token);
+    }
+
+    static async uploadAvatar(file: File, token?: string): Promise<AccountProfile> {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const headers: HeadersInit = {};
+        let authToken = token;
+        if (!authToken) {
+            try {
+                const supabase = createClient();
+                const { data: { session } } = await supabase.auth.getSession();
+                authToken = session?.access_token || undefined;
+            } catch {
+                authToken = undefined;
+            }
+        }
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+        const res = await fetch(`${API_BASE}/account/avatar`, {
+            method: "PATCH",
+            body: formData,
+            headers,
+        });
+
+        if (!res.ok) {
+            let detail = res.statusText;
+            try { const err = await res.json(); detail = err?.detail || detail; } catch { /* ignore */ }
+            throw new Error(`Avatar upload failed: ${detail}`);
+        }
+        return res.json();
     }
 }

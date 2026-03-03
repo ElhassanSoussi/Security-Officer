@@ -16,7 +16,7 @@ PLAN_PRICE_MAP = {
 
 PRICE_TO_PLAN = {v: k for k, v in PLAN_PRICE_MAP.items() if v}
 
-# Plans page tier → Phase 19 plan name (used for subscriptions table + webhook19)
+# Plans page tier → plan_name mapping used for subscriptions table + webhook compatibility
 TIER_TO_PLAN_NAME = {
     "starter": "FREE",
     "growth": "PRO",

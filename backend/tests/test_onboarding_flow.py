@@ -1,5 +1,5 @@
 """
-Phase 26 Verification: New Customer Onboarding Guide — E2E Tests
+New Customer Onboarding Guide — E2E Tests
 
 All tests are deterministic — no real DB / API / OpenAI calls needed.
 

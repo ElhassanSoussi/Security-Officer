@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 
 /**
- * Phase 21 Part 5: Email Verification Banner.
+ * Email Verification Banner.
  *
  * Shows a dismissible warning banner when the current user's email
  * is not yet verified. SOC2 requires email verification enforcement.

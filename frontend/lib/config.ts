@@ -1,5 +1,5 @@
 /**
- * Phase 12 Part 1: Typed frontend configuration loader.
+ * Typed frontend configuration loader.
  *
  * Centralizes all environment variable access into a single typed object.
  * Validates required vars at import time — pages that import config will

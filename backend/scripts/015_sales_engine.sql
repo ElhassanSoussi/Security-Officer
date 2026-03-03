@@ -1,4 +1,4 @@
--- Phase 22: Sales Engine — Database Migration
+-- Sales Engine Database Migration
 -- Creates tables and indexes for lead capture, demo workspace, and trial tracking.
 
 -- ── sales_leads table ─────────────────────────────────────────────────────────

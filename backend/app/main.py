@@ -17,7 +17,7 @@ except RuntimeError:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-# ─── Phase 20 Part 6: Sentry error monitoring (opt-in via SENTRY_DSN) ─────────
+# Sentry error monitoring (opt-in via SENTRY_DSN)
 _sentry_initialized = False
 if settings.SENTRY_DSN:
     try:
@@ -42,7 +42,7 @@ app = FastAPI(
     redoc_url="/redoc" if settings.docs_enabled else None,
 )
 
-# Phase 12 Part 9: Security headers middleware for API responses
+# Security headers middleware for API responses
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: FastAPIRequest, call_next) -> StarletteResponse:
         response = await call_next(request)
@@ -56,7 +56,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Phase 20 Part 7: Max upload file size enforcement middleware
+# Max upload file size enforcement middleware
 class MaxUploadSizeMiddleware(BaseHTTPMiddleware):
     MAX_BYTES = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
@@ -83,7 +83,7 @@ register_error_handlers(app)
 from app.core.request_logging import RequestLoggingMiddleware
 app.add_middleware(RequestLoggingMiddleware)
 
-# CORS Lockdown - Phase 4 hardening + Phase 20 production strictness
+# CORS Lockdown - production hardening and strictness
 allowed_origins = []
 if settings.is_production:
     # Production: ONLY explicit origins from env — no defaults, no wildcard
@@ -121,7 +121,7 @@ app.add_middleware(
 def root():
     return {"message": "NYC Compliance Architect API is running"}
 
-# Phase B: Lightweight liveness probe — always 200, no dependencies.
+# Lightweight liveness probe — always 200, no dependencies.
 # Render / load-balancer health checks should point here.
 @app.get("/health/ping")
 def health_ping():
@@ -154,7 +154,7 @@ def health_check():
 @app.get("/health/ready")
 def readiness_check():
     """
-    Phase 20 Part 3 — Readiness probe.
+    Readiness probe.
     Verifies DB connection, Stripe key presence, and OpenAI key presence.
     Returns 200 if all checks pass, 503 otherwise.
     Suitable for Kubernetes readinessProbe / ALB health checks.
@@ -272,7 +272,7 @@ def deep_health_check():
 @app.get("/health/full")
 def full_health_check():
     """
-    Phase 23: Comprehensive health endpoint.
+    Comprehensive health endpoint.
     Returns DB connectivity, Stripe status, vector search status, queue health.
     Suitable for production monitoring dashboards.
     """
@@ -351,9 +351,10 @@ def full_health_check():
 
 from app.api.routes import router as main_router
 from app.api.endpoints import runs, billing, orgs, projects, settings as settings_ep, audit, documents
-from app.api.endpoints import admin as admin_ep  # Phase 21
-from app.api.endpoints import sales as sales_ep  # Phase 22
-from app.api.endpoints import onboarding as onboarding_ep  # Phase 26
+from app.api.endpoints import admin as admin_ep
+from app.api.endpoints import sales as sales_ep
+from app.api.endpoints import onboarding as onboarding_ep
+from app.api.endpoints import account as account_ep
 
 app.include_router(main_router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
@@ -363,9 +364,11 @@ app.include_router(billing.router, prefix=f"{settings.API_V1_STR}/billing", tags
 app.include_router(orgs.router, prefix=f"{settings.API_V1_STR}/orgs", tags=["Organizations"])
 app.include_router(settings_ep.router, prefix=f"{settings.API_V1_STR}/settings", tags=["Settings"])
 app.include_router(audit.router, prefix=f"{settings.API_V1_STR}/audit", tags=["Audit"])
-# Phase 26: Onboarding guide endpoints
+# Onboarding guide endpoints
 app.include_router(onboarding_ep.router, prefix=settings.API_V1_STR, tags=["Onboarding"])
-# Phase 21: Admin + SOC2 compliance endpoints
+# Admin + SOC2 compliance endpoints
 app.include_router(admin_ep.router, prefix=settings.API_V1_STR, tags=["Admin", "SOC2"])
-# Phase 22: Sales engine + lead capture + demo reset
+# Sales engine + lead capture + demo reset
 app.include_router(sales_ep.router, prefix=settings.API_V1_STR, tags=["Sales", "Demo"])
+# Account profile + appearance
+app.include_router(account_ep.router, prefix=settings.API_V1_STR, tags=["Account"])

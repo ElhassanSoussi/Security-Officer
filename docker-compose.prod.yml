@@ -1,4 +1,4 @@
-# Phase 12 Part 8: Production Docker Compose
+# Production Docker Compose
 # Usage: docker compose -f docker-compose.prod.yml up --build -d
 #
 # Required env vars (set in host environment or .env at project root):

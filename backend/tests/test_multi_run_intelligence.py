@@ -1,15 +1,15 @@
 """
-Phase 4 Verification: Multi-Run Intelligence + Institutional Memory Engine
+Multi-Run Intelligence + Institutional Memory Engine Tests
 
 Tests cover:
 1. EmbeddingCache — LRU eviction, get/put, size, clear
 2. SimilarityMatch / SimilarityResult dataclasses
 3. Reuse classification thresholds (reuse / suggest / generate)
 4. Delta tracking (NEW / MODIFIED / UNCHANGED)
-5. QuestionItem Phase 4 fields (answer_origin, reused_from_question_id, etc.)
-6. Audit sheet Phase 4 "Answer Origin" column in export
-7. Generation pipeline Phase 4 fields present in all response types
-8. Config — Phase 4 settings defaults
+5. QuestionItem extended fields (answer_origin, reused_from_question_id, etc.)
+6. Audit sheet "Answer Origin" column in export
+7. Generation pipeline fields present in all response types
+8. Config — default settings
 9. Batch embedding helper
 10. Run comparison delta logic
 """
@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # ─── Test Helpers ────────────────────────────────────────────────────────────
 
 def _make_question(**overrides):
-    """Create a QuestionItem with Phase 4 defaults."""
+    """Create a QuestionItem with multi-run intelligence defaults."""
     from app.models.schemas import QuestionItem
 
     defaults = {
@@ -46,7 +46,7 @@ def _make_question(**overrides):
         "model_used": "gpt-4-turbo",
         "generation_time_ms": 1200,
         "retrieval_mode": "standard",
-        # Phase 4 fields
+        # Multi-run fields
         "answer_origin": "generated",
         "reused_from_question_id": None,
         "reuse_similarity_score": None,
@@ -410,11 +410,11 @@ class TestDeltaTracking:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 5. QuestionItem Phase 4 Fields
+# 5. QuestionItem Multi-Run Fields
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestQuestionItemPhase4:
-    def test_phase4_fields_present(self):
+class TestQuestionItemMultiRun:
+    def test_multi_run_fields_present(self):
         item = _make_question(
             answer_origin="reused",
             reused_from_question_id="qe-uuid-123",
@@ -426,8 +426,8 @@ class TestQuestionItemPhase4:
         assert item.reuse_similarity_score == 0.95
         assert item.change_type == "UNCHANGED"
 
-    def test_phase4_fields_optional(self):
-        """Phase 4 fields should all be Optional with None defaults."""
+    def test_multi_run_fields_optional(self):
+        """Multi-run fields should all be Optional with None defaults."""
         from app.models.schemas import QuestionItem
 
         item = QuestionItem(
@@ -467,10 +467,10 @@ class TestQuestionItemPhase4:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 6. Audit Sheet Phase 4 Columns
+# 6. Audit Sheet Multi-Run Columns
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestAuditSheetPhase4:
+class TestAuditSheetMultiRun:
     def test_audit_sheet_has_answer_origin_header(self):
         from app.core.excel_agent import excel_agent
         from openpyxl import load_workbook
@@ -529,11 +529,11 @@ class TestAuditSheetPhase4:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. Generation Pipeline Phase 4 Fields
+# 7. Generation Pipeline Multi-Run Fields
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestGenerationPhase4Fields:
-    def test_error_response_has_phase4_fields(self):
+class TestGenerationMultiRunFields:
+    def test_error_response_has_multi_run_fields(self):
         from app.core.generation import AnswerEngine
 
         resp = AnswerEngine._error_response("ai_unavailable", "test error")
@@ -544,7 +544,7 @@ class TestGenerationPhase4Fields:
         assert "reuse_similarity_score" in resp
         assert resp["reuse_similarity_score"] is None
 
-    def test_not_found_response_has_phase4_fields(self):
+    def test_not_found_response_has_multi_run_fields(self):
         from app.core.generation import AnswerEngine
 
         engine = AnswerEngine()
@@ -559,11 +559,11 @@ class TestGenerationPhase4Fields:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 8. Config Phase 4 Settings
+# 8. Config Multi-Run Settings
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestConfigPhase4:
-    def test_phase4_default_settings(self):
+class TestConfigMultiRun:
+    def test_multi_run_default_settings(self):
         from app.core.config import get_settings
 
         s = get_settings()
@@ -583,12 +583,12 @@ class TestConfigPhase4:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 9. Backward Compatibility — Phase 3 Tests Still Pass
+# 9. Backward Compatibility — Retrieval Tests Still Pass
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestBackwardCompatibility:
-    def test_phase3_question_item_still_works(self):
-        """Phase 3 fields should still be present and functional."""
+    def test_retrieval_question_item_still_works(self):
+        """Retrieval fields should still be present and functional."""
         item = _make_question()
         assert item.confidence_score == 0.85
         assert item.embedding_similarity_score == 0.92

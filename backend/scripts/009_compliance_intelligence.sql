@@ -1,4 +1,4 @@
--- Phase 15: Compliance Intelligence + Institutional Memory
+-- Compliance Intelligence and Institutional Memory Migration
 -- Apply in Supabase SQL Editor or via: psql "$DATABASE_URL" -f this_file.sql
 
 -- ─────────────────────────────────────────────────────────────────────────────

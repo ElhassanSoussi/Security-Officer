@@ -417,7 +417,7 @@ async def analyze_excel(
                 },
             )
             
-            # Phase 4.1: Log Activity
+            # Log Activity
             try:
                 activity_payload = {
                     "org_id": org_id,
@@ -430,7 +430,7 @@ async def analyze_excel(
             except Exception as act_err:
                  logger.warning("Activity Log Error: %s", act_err)
 
-            # Phase 4.3: Persist Run Audits (Initial AI Results)
+            # Persist run audits (initial AI results)
             try:
                 import re
                 audit_rows = []

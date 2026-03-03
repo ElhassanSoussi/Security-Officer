@@ -131,12 +131,12 @@ def main():
         print(f"  {r['env_key']}={r['price_id']}")
     print()
 
-    # Also show Phase 19 mapping (FREE=Starter, PRO=Growth, ENTERPRISE=Elite)
-    phase19_map = {"STRIPE_PRICE_STARTER": "STRIPE_PRICE_FREE", "STRIPE_PRICE_GROWTH": "STRIPE_PRICE_PRO", "STRIPE_PRICE_ELITE": "STRIPE_PRICE_ENTERPRISE"}
-    print("📋 Phase 19 plan name aliases (same Price IDs):")
+    # Also show plan name aliases (FREE=Starter, PRO=Growth, ENTERPRISE=Elite)
+    plan_alias_map = {"STRIPE_PRICE_STARTER": "STRIPE_PRICE_FREE", "STRIPE_PRICE_GROWTH": "STRIPE_PRICE_PRO", "STRIPE_PRICE_ELITE": "STRIPE_PRICE_ENTERPRISE"}
+    print("📋 Plan name aliases (same Price IDs):")
     print()
     for r in results:
-        alias = phase19_map.get(r["env_key"])
+        alias = plan_alias_map.get(r["env_key"])
         if alias:
             print(f"  {alias}={r['price_id']}")
     print()
@@ -144,13 +144,13 @@ def main():
     # Offer to auto-update backend/.env
     answer = input("Auto-update backend/.env with these values? [y/N] ").strip().lower()
     if answer == "y":
-        _update_env_file(ENV_FILE, results, phase19_map)
+        _update_env_file(ENV_FILE, results, plan_alias_map)
         print("✅ backend/.env updated!")
     else:
         print("Skipped. Copy the values above manually.")
 
 
-def _update_env_file(path: str, results: list, phase19_map: dict):
+def _update_env_file(path: str, results: list, plan_alias_map: dict):
     """Update or append Price IDs in the .env file."""
     lines = []
     if os.path.exists(path):
@@ -161,7 +161,7 @@ def _update_env_file(path: str, results: list, phase19_map: dict):
     updates = {}
     for r in results:
         updates[r["env_key"]] = r["price_id"]
-        alias = phase19_map.get(r["env_key"])
+        alias = plan_alias_map.get(r["env_key"])
         if alias:
             updates[alias] = r["price_id"]
 

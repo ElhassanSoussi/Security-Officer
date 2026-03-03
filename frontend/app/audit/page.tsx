@@ -72,7 +72,7 @@ export default function AuditPage() {
     const [reviewingId, setReviewingId] = useState<string | null>(null);
     const [bulkActioning, setBulkActioning] = useState(false);
 
-    // Phase 14: filter chips
+    // filter chips
     const [activeChip, setActiveChip] = useState<AuditFilterChip>("all");
 
     // Review detail drawer state
@@ -106,7 +106,7 @@ export default function AuditPage() {
     const searchParams = useSearchParams();
     const [orgId, setOrgId] = useState<string | null>(getStoredOrgId());
 
-    // Phase 14 RBAC
+    // RBAC
     const rbac = useRBAC(orgId);
 
     const getToken = useCallback(async () => {
@@ -138,7 +138,7 @@ export default function AuditPage() {
         ensureOrg();
     }, [orgId, router, supabase.auth]);
 
-    // Phase 14: auto-set run_id filter from URL ?run_id=...
+    // auto-set run_id filter from URL ?run_id=...
     useEffect(() => {
         const runId = searchParams.get("run_id");
         if (runId) setRunIdFilter(runId);
@@ -207,7 +207,7 @@ export default function AuditPage() {
             const token = await getToken();
             if (!token) return;
             await ApiClient.reviewAuditEntry(audit.run_id, audit.id, status, "", token);
-            // Phase 26 onboarding: completing step 4 advances to step 5
+            // Onboarding: completing step 4 advances to step 5
             try {
                 const st = await ApiClient.getOnboardingState(token);
                 if (!st.onboarding_completed && st.onboarding_step === 4) {
@@ -276,7 +276,7 @@ export default function AuditPage() {
             }
             // Then review
             await ApiClient.reviewAuditEntry(drawerAudit.run_id, drawerAudit.id, status, drawerNote, token);
-            // Phase 26 onboarding: completing step 4 advances to step 5
+            // Onboarding: completing step 4 advances to step 5
             try {
                 const st = await ApiClient.getOnboardingState(token);
                 if (!st.onboarding_completed && st.onboarding_step === 4) {
@@ -299,7 +299,7 @@ export default function AuditPage() {
         }
     };
 
-    // ── Phase 14: Bulk action handlers ─────────────────────────
+    // ── Bulk action handlers ─────────────────────────
     const handleBulkApproveAllHigh = async () => {
         const token = await getToken();
         if (!token) return;
@@ -426,7 +426,7 @@ export default function AuditPage() {
         return rows;
     }, [audits, auditSort]);
 
-    // Phase 14: filtered + chip counts
+    // filtered + chip counts
     const chippedAudits = useMemo(() => applyAuditChipFilter(sortedAudits, activeChip), [sortedAudits, activeChip]);
     const chipCounts = useMemo(() => computeChipCounts(audits), [audits]);
     const pendingCount = audits.filter((a) => !a.review_status || a.review_status === "pending").length;
@@ -463,7 +463,7 @@ export default function AuditPage() {
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
-            {/* Phase 26 onboarding */}
+            {/* Onboarding */}
             <OnboardingStepBanner expectedStep={4} />
             <PageHeader
                 title={
@@ -475,7 +475,7 @@ export default function AuditPage() {
                 subtitle="Review AI-generated answers, track exports, and maintain a tamper-evident audit trail."
             />
 
-            {/* Phase 12 Part 5: Tamper-Evident Audit Trail badge */}
+            {/* Tamper-Evident Audit Trail badge */}
             <div className="flex items-center gap-2">
                 <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 gap-1.5 text-xs px-3 py-1">
                     <ShieldCheck className="h-3.5 w-3.5" />
@@ -498,7 +498,7 @@ export default function AuditPage() {
 
                 {/* ── Run Audits Tab ──────────────────────────── */}
                 <TabsContent value="audits" className="space-y-4 mt-6">
-                    {/* Phase 14: Active run_id banner */}
+                    {/* Active run_id banner */}
                     {runIdFilter && (
                         <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2 text-sm text-blue-800">
                             <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -513,7 +513,7 @@ export default function AuditPage() {
                         </div>
                     )}
 
-                    {/* Phase 14: RBAC banner */}
+                    {/* RBAC banner */}
                     {!rbac.loading && !rbac.canReview && (
                         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800">
                             <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -565,7 +565,7 @@ export default function AuditPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Phase 14: Filter Chips + Bulk Actions */}
+                    {/* Filter Chips + Bulk Actions */}
                     {!loading && audits.length > 0 && (
                         <div className="space-y-2">
                             <AuditFilterChips
@@ -811,7 +811,7 @@ export default function AuditPage() {
                                 </SheetDescription>
                             </SheetHeader>
                             <SheetBody>
-                                {/* Similarity / Institutional Memory hint (Phase 15 & 16) */}
+                                {/* Similarity / Institutional Memory hint */}
                                 {((drawerAudit?.answer_origin === "reused") || drawerAudit?.reuse_similarity_score) && (
                                     <div className="rounded-md border border-purple-200 bg-purple-50/60 px-3 py-2 text-sm text-purple-800 mb-3">
                                         <div className="flex flex-col gap-2">
@@ -914,7 +914,7 @@ export default function AuditPage() {
                                     </div>
                                 )}
 
-                                {/* Phase 14: Rejection Note (required on reject) */}
+                                {/* Rejection Note (required on reject) */}
                                 {rbac.canReview && (
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -949,7 +949,7 @@ export default function AuditPage() {
                                 )}
                             </SheetBody>
                             <SheetFooter className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end border-t pt-4 border-border">
-                                {/* Phase 16: Promote to Memory */}
+                                {/* Promote to Memory */}
                                 {rbac.canReview && drawerAnswer !== (drawerAudit.original_answer || "") && drawerAnswer !== "" && (
                                     <Button
                                         variant="outline"

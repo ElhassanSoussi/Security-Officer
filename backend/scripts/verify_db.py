@@ -1,4 +1,3 @@
-
 import os
 import sys
 import psycopg2
@@ -43,7 +42,7 @@ def verify_tables():
         "documents",
         "runs",
         "run_audits",
-        "activities" # Phase 4.1 added this
+        "activities" # activities table added as part of the institutional memory migration
     ]
 
     print(f"🔍 Verifying Database Schema on {DB_HOST}:{DB_PORT}/{DB_DB}...\n")

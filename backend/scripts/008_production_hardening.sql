@@ -1,4 +1,4 @@
--- Phase 12 Part 7: Production hardening migration
+-- Production Hardening Migration
 -- Run this migration AFTER all previous migrations have been applied.
 -- 
 -- Changes:

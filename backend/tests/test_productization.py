@@ -1,10 +1,10 @@
 """
-Phase 6 Verification: End-to-End Productization.
+End-to-End Productization Tests
 
-  Part 1: Project Overview endpoint — aggregated dashboard payload, RBAC, never-500
-  Part 2: Onboarding Checklist — step computation, auto-detect, POST complete
-  Part 3: Empty States — safe defaults from overview endpoint
-  Part 4: Production Guardrails — rate limiter, request ID, input validation
+  - Project Overview endpoint — aggregated dashboard payload, RBAC, never-500
+  - Onboarding Checklist — step computation, auto-detect, POST complete
+  - Empty States — safe defaults from overview endpoint
+  - Production Guardrails — rate limiter, request ID, input validation
 
 Total: deterministic tests.  Zero external dependencies (no DB, no network).
 """
@@ -484,7 +484,7 @@ class TestSecurityHeaders:
 
 
 class TestBackwardCompatibilityPhase6:
-    """Ensure Phase 2–5 features are unaffected."""
+    """Ensure onboarding and export-related features are unaffected."""
 
     def test_rbac_module_intact(self):
         from app.core.rbac import Role, Permission, normalize_role

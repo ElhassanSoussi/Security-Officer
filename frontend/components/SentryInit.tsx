@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 20 Part 6 — Sentry initialization wrapper (client component).
+ * Sentry initialization wrapper (client component).
  * Calls initSentry() once on mount. Renders nothing.
  */
 

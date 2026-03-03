@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ExportGatePanel — Phase 14 Part 3
+ * ExportGatePanel component.
  * Displays unreviewed low-confidence count, requires checkbox before export,
  * shows confirmation modal with status breakdown.
  */

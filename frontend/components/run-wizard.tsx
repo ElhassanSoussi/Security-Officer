@@ -95,7 +95,7 @@ export function RunWizard({ orgId, projectId }: RunWizardProps) {
         };
     }, [questions]);
 
-    // Phase 11: Export readiness warnings
+    // Export readiness warnings
     const exportWarnings = useMemo<ExportWarning[]>(() => {
         const flagged = questions.filter(q => deriveAnswerStatus(q) === "flagged").length;
         const lowConf = questions.filter(q => q.confidence === "LOW").length;
@@ -107,7 +107,7 @@ export function RunWizard({ orgId, projectId }: RunWizardProps) {
         ];
     }, [questions]);
 
-    // Phase 4.3: Load latest run on mount
+    // Load latest run on mount
     useEffect(() => {
         const supabase = createClient();
 
@@ -207,7 +207,7 @@ export function RunWizard({ orgId, projectId }: RunWizardProps) {
 
         if (!runData) return;
 
-        // Phase 11: Check if there are warnings that should trigger the gate
+        // Check if there are warnings that should trigger the gate
         const hasIssues = exportWarnings.some(w => w.count > 0);
         if (hasIssues && !exportGateOpen) {
             setExportGateOpen(true);
@@ -471,7 +471,7 @@ export function RunWizard({ orgId, projectId }: RunWizardProps) {
                         token={token}
                     />
 
-                    {/* Phase 11: Export Readiness Gate */}
+                    {/* Export Readiness Gate */}
                     <ExportReadinessGate
                         open={exportGateOpen}
                         onOpenChange={setExportGateOpen}

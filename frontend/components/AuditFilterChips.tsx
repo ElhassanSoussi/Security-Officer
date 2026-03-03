@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AuditFilterChips — Phase 14 Part 4
+ * AuditFilterChips component.
  * Quick-filter chip bar for the Audit review table.
  */
 

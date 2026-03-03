@@ -1,5 +1,5 @@
 """
-Phase 21 Verification: SOC2 Readiness Foundations
+SOC2 Readiness Foundations Tests
 
 All tests are deterministic — no real DB / API / external calls.
 

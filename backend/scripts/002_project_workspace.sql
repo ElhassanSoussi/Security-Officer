@@ -1,4 +1,4 @@
--- Phase 2: Project Workspace + Knowledge Vault + Review → Export Gate
+-- Project Workspace, Knowledge Vault, and Review → Export Gate Migration
 -- Run in Supabase SQL Editor (or via psql). Fully idempotent.
 
 begin;
@@ -72,7 +72,7 @@ create policy "project_documents_delete_member"
   );
 
 -- ---------------------------------------------------------------------------
--- 3. run_audits — ensure all Phase 2 review columns exist
+-- 3. run_audits — ensure all review columns exist
 -- ---------------------------------------------------------------------------
 alter table if exists run_audits
   add column if not exists review_status text not null default 'pending',

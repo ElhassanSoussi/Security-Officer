@@ -64,3 +64,23 @@
   --text-xl:   1.25rem;   /* 20px */
   --text-2xl:  1.5rem;    /* 24px */
 }
+
+/* ─── Dark Theme Overrides ────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg:         222 20% 10%;
+  --color-surface:    222 16% 14%;
+  --color-surface-alt: 222 14% 18%;
+  --color-text:       210 20% 92%;
+  --color-text-muted: 215 14% 60%;
+  --color-border:     215 14% 22%;
+  --color-border-strong: 215 12% 30%;
+  --color-primary:         230 60% 60%;
+  --color-primary-hover:   230 60% 55%;
+  --color-primary-fg:      222 20% 10%;
+  --color-success:    142 45% 50%;
+  --color-success-bg: 142 30% 16%;
+  --color-warning:    42 95% 55%;
+  --color-warning-bg: 42 40% 14%;
+  --color-danger:     0 78% 58%;
+  --color-danger-bg:  0 40% 14%;
+}

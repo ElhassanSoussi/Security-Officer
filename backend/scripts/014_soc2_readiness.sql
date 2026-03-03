@@ -1,4 +1,4 @@
--- Phase 21: SOC2 Readiness Foundations — Migration
+-- SOC2 Readiness Foundations — Migration
 -- Immutable Activity Log Protection + Data Retention Support
 
 -- ────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 """
-Phase 3 Verification: Deterministic Retrieval Engine
+Deterministic Retrieval Engine Tests
 
 Tests cover:
 1. Similarity threshold enforcement
@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # ─── Test Helpers ────────────────────────────────────────────────────────────
 
 def _make_question(**overrides):
-    """Create a QuestionItem with Phase 3 defaults."""
+    """Create a QuestionItem with retrieval defaults."""
     from app.models.schemas import QuestionItem
 
     defaults = {
@@ -251,7 +251,7 @@ class TestRetrievalResult:
 # ─── 4. Error Response Structure ────────────────────────────────────────────
 
 class TestErrorResponseStructure:
-    """Verify error/fallback responses include all Phase 3 metadata fields."""
+    """Verify error/fallback responses include all retrieval metadata fields."""
 
     def test_error_response_has_all_fields(self):
         from app.core.generation import AnswerEngine
@@ -274,9 +274,9 @@ class TestErrorResponseStructure:
 # ─── 5. QuestionItem Schema ─────────────────────────────────────────────────
 
 class TestQuestionItemSchema:
-    """Verify Phase 3 fields on the QuestionItem model."""
+    """Verify retrieval fields on the QuestionItem model."""
 
-    def test_phase3_fields_present(self):
+    def test_retrieval_fields_present(self):
         item = _make_question()
         assert item.confidence_score == 0.85
         assert item.confidence_reason == "high similarity match; 3 supporting chunks"
@@ -287,8 +287,8 @@ class TestQuestionItemSchema:
         assert item.generation_time_ms == 1200
         assert item.retrieval_mode == "standard"
 
-    def test_phase3_fields_optional(self):
-        """Phase 3 fields default to None for backward compatibility."""
+    def test_retrieval_fields_optional(self):
+        """Retrieval fields default to None for backward compatibility."""
         from app.models.schemas import QuestionItem
 
         item = QuestionItem(
@@ -372,9 +372,9 @@ class TestExcelCellComments:
 # ─── 7. Expanded Audit Sheet Columns ────────────────────────────────────────
 
 class TestExpandedAuditSheet:
-    """Verify the audit sheet has Phase 3 columns (Confidence Score, Similarity, Model)."""
+    """Verify the audit sheet has retrieval columns (Confidence Score, Similarity, Model)."""
 
-    def test_audit_sheet_has_phase3_headers(self):
+    def test_audit_sheet_has_retrieval_headers(self):
         from app.core.excel_agent import excel_agent
         from openpyxl import load_workbook
         from io import BytesIO
@@ -419,7 +419,7 @@ class TestExpandedAuditSheet:
 # ─── 8. Backward Compatibility ──────────────────────────────────────────────
 
 class TestBackwardCompatibility:
-    """Ensure Phase 2 test scenarios still work with Phase 3 changes."""
+    """Ensure previous test scenarios still work with retrieval changes."""
 
     def test_approved_still_writes(self):
         from app.core.excel_agent import excel_agent
@@ -427,7 +427,7 @@ class TestBackwardCompatibility:
         from io import BytesIO
 
         template = _create_test_workbook()
-        # No Phase 3 fields set — backward compat
+        # No retrieval fields set — backward compat
         from app.models.schemas import QuestionItem
 
         answers = [
@@ -480,7 +480,7 @@ class TestBackwardCompatibility:
 # ─── 9. Config Settings ─────────────────────────────────────────────────────
 
 class TestConfigSettings:
-    """Verify Phase 3 config settings exist and have correct defaults."""
+    """Verify retrieval config settings exist and have correct defaults."""
 
     def test_default_settings(self):
         from app.core.config import get_settings

@@ -1,5 +1,5 @@
 """
-Phase 15 Verification: Compliance Intelligence + Institutional Memory Engine
+Compliance Intelligence + Institutional Memory Engine Tests
 
 Tests cover (all deterministic, no DB/API/OpenAI needed):
 1.  normalize_question — lowercasing, punctuation stripping, whitespace collapse
@@ -7,7 +7,7 @@ Tests cover (all deterministic, no DB/API/OpenAI needed):
 3.  confidence_score_to_level — numeric and string inputs
 4.  store_institutional_answer — rejects blank inputs
 5.  InstitutionalMemoryLookup — graceful failure when DB unavailable
-6.  compute_delta backward-compat — still works with Phase 15 code present
+6.  compute_delta backward-compat — still works with current code
 7.  _normalize_question alias still importable
 8.  ComplianceHealthDefaults — _empty_health shape
 9.  RiskIndicators — pct thresholds for warning/critical
@@ -200,7 +200,7 @@ class TestComplianceHealthEmpty:
             "total_low_conf", "total_high_conf", "total_medium_conf",
             "memory_reuse_count", "avg_review_turnaround_hours", "low_conf_trend",
         }
-        # Phase 16 added health_score; use subset check so new keys don't break this test
+        # Historically added health_score; use subset check so new keys don't break this test
         assert required_keys <= set(h.keys())
 
     def test_empty_health_zeros(self):
@@ -392,7 +392,7 @@ class TestBackwardCompatImports:
             confidence="HIGH",
             sources=[],
         )
-        # Phase 4 fields still present
+        # Previous fields still present
         assert hasattr(item, "answer_origin")
         assert hasattr(item, "change_type")
 
@@ -427,11 +427,11 @@ class TestTrendLabelTrim:
         assert "…" in result
 
 
-# ─── 20. Phase 15 integration: routes.py import safe ─────────────────────────
+# ─── 20. Integration: routes.py import safe ─────────────────────────
 
 class TestRoutesIntegration:
     def test_routes_import_clean(self):
-        """routes.py must still import without error after Phase 15 changes."""
+        """routes.py must still import without error after recent changes."""
         import importlib
         import app.api.routes as routes_mod
         importlib.reload(routes_mod)

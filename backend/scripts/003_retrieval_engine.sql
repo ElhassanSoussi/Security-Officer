@@ -1,4 +1,4 @@
--- Phase 3 Part 1: Deterministic Retrieval Engine — DB Migration
+-- Deterministic Retrieval Engine — Database Migration
 -- Run in Supabase SQL Editor (or via psql). Fully idempotent.
 
 begin;

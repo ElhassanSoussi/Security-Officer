@@ -7,7 +7,7 @@ no real Stripe/DB/network calls. Tests cover the full checkout→webhook→
 enforcement pipeline including:
 
   • Plans-page checkout flow (starter/growth/elite → FREE/PRO/ENTERPRISE mapping)
-  • Phase 19 checkout flow (FREE/PRO/ENTERPRISE direct)
+  • Checkout flow (FREE/PRO/ENTERPRISE direct)
   • Webhook19 handler dispatch for all event types
   • Dual-write: subscriptions table + organizations table
   • Metadata compatibility (plan_tier vs plan_name in session metadata)
@@ -258,7 +258,7 @@ class TestWebhook19Handlers:
         return mock_sb
 
     def test_13_checkout_completed_reads_plan_name_metadata(self):
-        """Webhook handler should read plan_name from metadata (Phase 19 flow)."""
+        """Webhook handler should read plan_name from metadata (checkout flow)."""
         from app.core.stripe_billing import _handle_checkout_completed
 
         mock_sb = self._mock_admin_sb()
@@ -755,7 +755,7 @@ class TestSecretLeakGuard:
 
 
 # ===========================================================================
-# E2E-49–55: Phase 19 checkout flow (stripe_billing.py)
+# E2E-49–55: Checkout flow (stripe_billing.py)
 # ===========================================================================
 
 class TestPhase19CheckoutFlow:

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
-    # Phase 19: Price IDs for Phase-18 plan names (FREE/PRO/ENTERPRISE)
+    # Price IDs for plan names (FREE/PRO/ENTERPRISE)
     STRIPE_PRICE_FREE: str = ""
     STRIPE_PRICE_PRO: str = ""
     STRIPE_PRICE_ENTERPRISE: str = ""

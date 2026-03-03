@@ -1,4 +1,4 @@
--- Phase 17: Evidence Vault + Immutable Audit Export
+-- Evidence Vault and Immutable Audit Export Migration
 
 -- 1. Add is_locked to runs
 ALTER TABLE IF EXISTS runs

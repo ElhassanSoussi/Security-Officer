@@ -1,4 +1,4 @@
--- Phase 26: New Customer Onboarding Guide
+-- New Customer Onboarding Guide
 -- Adds onboarding state columns to organizations.
 -- Multi-tenant isolation unchanged: this only extends the organizations row.
 

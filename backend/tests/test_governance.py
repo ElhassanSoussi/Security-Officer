@@ -1,5 +1,5 @@
 """
-Phase 16 Verification: Institutional Memory Governance + Compliance Activity Timeline
+Institutional Memory Governance + Compliance Activity Timeline Tests
 
 Tests cover (all deterministic, no DB/API/OpenAI needed):
 1.  log_activity_event — imported from app.core.audit_events

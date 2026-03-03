@@ -1,4 +1,4 @@
--- Phase 4: Multi-Run Intelligence + Institutional Memory Engine — DB Migration
+-- Multi-Run Intelligence and Institutional Memory Engine — DB Migration
 -- Run in Supabase SQL Editor (or via psql). Fully idempotent.
 
 begin;
@@ -138,7 +138,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 3. run_audits — add Phase 4 columns for answer reuse + delta tracking
+-- 3. run_audits — add columns for answer reuse + delta tracking
 -- ---------------------------------------------------------------------------
 alter table if exists run_audits
   add column if not exists answer_origin text default 'generated',  -- 'generated' | 'reused' | 'suggested'

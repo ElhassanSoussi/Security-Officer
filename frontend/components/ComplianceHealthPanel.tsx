@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ComplianceHealthPanel — Phase 15 Part 3
+ * ComplianceHealthPanel component.
  * Org-level compliance metrics + low-confidence trend bar chart.
  * Fetches from GET /api/v1/runs/compliance-health?org_id=...
  * (via ApiClient.fetch which prepends API_BASE automatically)

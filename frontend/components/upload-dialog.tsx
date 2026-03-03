@@ -57,7 +57,7 @@ export function UploadDialog({ label, orgId, projectId, scope, onSuccess }: Uplo
             setFile(null);
             toast({ title: "Upload Complete", description: `${file.name} uploaded successfully.`, variant: "success" });
             
-            // Phase 26 onboarding: completing step 1 (upload document) advances to step 2
+            // Onboarding: completing step 1 (upload document) advances to step 2
             try {
                 if (token) {
                     const st = await ApiClient.getOnboardingState(token);

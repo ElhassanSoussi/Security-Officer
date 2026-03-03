@@ -1,14 +1,14 @@
 /**
- * Phase 8 — Enterprise Trust Layer + Product Structuring
+ * Enterprise Trust Layer + Product Structuring E2E Tests
  *
- * E2E tests verify that the UI changes from Phase 8 are visible and
+ * E2E tests verify that the UI changes for enterprise trust are visible and
  * functional when navigating the authenticated app.
  *
  * Prerequisites:
  *   - Stack running on localhost:3001 (frontend) and localhost:8000 (backend)
  *   - E2E_EMAIL and E2E_PASSWORD env vars set
  *
- * Run:  npx playwright test tests/phase8-enterprise-trust.spec.ts
+ * Run:  npx playwright test tests/enterprise-trust.spec.ts
  */
 import { expect, test } from "@playwright/test";
 
@@ -23,10 +23,10 @@ async function login(page: import("@playwright/test").Page) {
     await page.waitForURL("**/dashboard");
 }
 
-test.describe("Phase 8: Enterprise Trust Layer", () => {
+test.describe("Enterprise Trust Layer", () => {
     test.skip(!email || !password, "Set E2E_EMAIL and E2E_PASSWORD to run");
 
-    // ── Part 1: Product Identity & Clarity ────────────────────────────────
+    // ── Product Identity & Clarity ────────────────────────────────
 
     test("P1-1: Sidebar shows product descriptor", async ({ page }) => {
         await login(page);
@@ -66,7 +66,7 @@ test.describe("Phase 8: Enterprise Trust Layer", () => {
         expect(beginCount + reviewCount).toBeGreaterThan(0);
     });
 
-    // ── Part 2: Security & Trust Visual Signals ───────────────────────────
+    // ── Security & Trust Visual Signals ───────────────────────────
 
     test("P2-1: Audit page header has ShieldCheck icon text", async ({ page }) => {
         await login(page);
@@ -101,7 +101,7 @@ test.describe("Phase 8: Enterprise Trust Layer", () => {
         await expect(page.locator("text=1.0.0").first()).toBeVisible();
     });
 
-    // ── Part 3: Workflow Professionalization ───────────────────────────────
+    // ── Workflow Professionalization ───────────────────────────────
 
     test("P3-1: Run page shows 4-step workflow indicator", async ({ page }) => {
         await login(page);

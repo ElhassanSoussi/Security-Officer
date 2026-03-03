@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useRBAC — Phase 14 Part 6
+ * useRBAC hook.
  * Fetches the current user's membership role in the active org and
  * exposes permission helpers derived from lib/rbac.ts.
  */

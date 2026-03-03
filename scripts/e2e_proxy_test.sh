@@ -18,23 +18,23 @@ ORG_ID="${SMOKE_ORG_ID:-}"
 
 echo "=== E2E TEST $(date) ===" > "$OUTFILE"
 
-# Step 1: Backend health
+# Backend health
 echo "" >> "$OUTFILE"
-echo "--- STEP 1: Backend Health ---" >> "$OUTFILE"
+echo "--- Backend Health ---" >> "$OUTFILE"
 HEALTH=$(curl -s --max-time 10 "$BACKEND/health" 2>&1)
 echo "$HEALTH" >> "$OUTFILE"
 echo "$HEALTH" | grep -q '"status":"ok"' && echo "PASS: Backend healthy" >> "$OUTFILE" || echo "FAIL: Backend unhealthy" >> "$OUTFILE"
 
-# Step 2: Frontend proxy health
+# Frontend Proxy Health
 echo "" >> "$OUTFILE"
-echo "--- STEP 2: Frontend Proxy Health ---" >> "$OUTFILE"
+echo "--- Frontend Proxy Health ---" >> "$OUTFILE"
 PROXY_HEALTH=$(curl -s --max-time 30 "$FRONTEND/api/v1/health" 2>&1)
 echo "$PROXY_HEALTH" >> "$OUTFILE"
 echo "$PROXY_HEALTH" | grep -q '"status":"ok"' && echo "PASS: Proxy working" >> "$OUTFILE" || echo "FAIL: Proxy broken" >> "$OUTFILE"
 
-# Step 3: Auth
+# Auth
 echo "" >> "$OUTFILE"
-echo "--- STEP 3: Auth ---" >> "$OUTFILE"
+echo "--- Auth ---" >> "$OUTFILE"
 SMOKE_EMAIL="${SMOKE_EMAIL:?Set SMOKE_EMAIL in .smoke.env or environment}"
 SMOKE_PASSWORD="${SMOKE_PASSWORD:?Set SMOKE_PASSWORD in .smoke.env or environment}"
 AUTH_RESP=$(curl -s --max-time 15 "${SUPABASE}/auth/v1/token?grant_type=password" \
@@ -49,9 +49,9 @@ else
   echo "$AUTH_RESP" >> "$OUTFILE"
 fi
 
-# Step 4: Direct backend analyze-excel
+# Direct Backend Analyze
 echo "" >> "$OUTFILE"
-echo "--- STEP 4: Direct Backend Analyze ---" >> "$OUTFILE"
+echo "--- Direct Backend Analyze ---" >> "$OUTFILE"
 if [ -n "$TOKEN" ] && [ -f "$SAMPLE" ]; then
   ANALYZE_DIRECT=$(curl -s --max-time 120 "$BACKEND/api/v1/analyze-excel" \
     -H "Authorization: Bearer $TOKEN" \
@@ -64,9 +64,9 @@ else
   echo "SKIP: No token or sample file" >> "$OUTFILE"
 fi
 
-# Step 5: Proxy analyze-excel (the critical test!)
+# Proxy analyze-excel (the critical test!)
 echo "" >> "$OUTFILE"
-echo "--- STEP 5: Proxy Analyze (THE FIX TEST) ---" >> "$OUTFILE"
+echo "--- Proxy Analyze (THE FIX TEST) ---" >> "$OUTFILE"
 if [ -n "$TOKEN" ] && [ -f "$SAMPLE" ]; then
   ANALYZE_PROXY=$(curl -s --max-time 120 "$FRONTEND/api/v1/analyze-excel" \
     -H "Authorization: Bearer $TOKEN" \

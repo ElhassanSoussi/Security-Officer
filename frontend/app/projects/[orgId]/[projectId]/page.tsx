@@ -123,7 +123,7 @@ export default function ProjectDetail() {
 
     return (
         <div className="space-y-8 p-8">
-            {/* Phase 26: Onboarding step 1 banner (document upload) */}
+            {/* Onboarding step 1 banner (document upload) */}
             <OnboardingStepBanner expectedStep={1} />
             
             <div>
@@ -152,7 +152,7 @@ export default function ProjectDetail() {
                 </div>
             )}
 
-            {/* Phase 6: Onboarding Checklist */}
+            {/* Onboarding Checklist */}
             {overview?.onboarding && !overview.onboarding.all_complete && (
                 <SectionCard>
                     <div className="p-6">
@@ -165,7 +165,7 @@ export default function ProjectDetail() {
                 </SectionCard>
             )}
 
-            {/* Phase 6: KPI Dashboard Cards */}
+            {/* KPI Dashboard Cards */}
             {overview && !overviewLoading && (
                 <div className="grid gap-4 md:grid-cols-4">
                     <KpiCard
@@ -319,7 +319,7 @@ export default function ProjectDetail() {
                     </Card>
                 </TabsContent>
 
-                {/* TAB 4: AUDIT TRAIL (Phase 6) */}
+                {/* TAB 4: AUDIT TRAIL */}
                 <TabsContent value="audit">
                     <Card>
                         <CardHeader>
@@ -366,7 +366,7 @@ export default function ProjectDetail() {
                     </Card>
                 </TabsContent>
 
-                {/* TAB 5: EVIDENCE VAULT (Phase 17) */}
+                {/* TAB 5: EVIDENCE VAULT */}
                 <TabsContent value="evidence">
                     <Card>
                         <CardHeader>
@@ -395,7 +395,7 @@ export default function ProjectDetail() {
 }
 
 
-// ─── Phase 6: KPI Card ────────────────────────────────────────────────────────
+// ─── KPI Card ────────────────────────────────────────────────────────
 function KpiCard({
     icon,
     title,
@@ -424,7 +424,7 @@ function KpiCard({
 }
 
 
-// ─── Phase 6: Onboarding Checklist ────────────────────────────────────────────
+// ─── Onboarding Checklist ────────────────────────────────────────────
 function OnboardingChecklist({
     onboarding,
     projectId: _projectId,
@@ -497,7 +497,7 @@ function OnboardingChecklist({
 }
 
 
-// ─── Phase 6: Reusable Empty State ────────────────────────────────────────────
+// ─── Reusable Empty State ────────────────────────────────────────────
 function EmptyState({
     icon,
     title,
@@ -573,7 +573,7 @@ function ProjectDocumentsList({ projectId, orgId, token }: { projectId: string; 
             toast({ title: "Upload Complete", description: `${file.name} added to Knowledge Vault.`, variant: "success" });
             await loadDocs();
             
-            // Phase 26 onboarding: completing step 1 (upload document) advances to step 2
+            // Onboarding: completing step 1 (upload document) advances to step 2
             try {
                 if (token) {
                     const st = await ApiClient.getOnboardingState(token);
