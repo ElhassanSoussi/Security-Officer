@@ -317,6 +317,19 @@ def _handle_subscription_updated(sub_data: Dict[str, Any]) -> None:
         "max_memory_entries": limits["max_memory_entries"],
     }
     _upsert_subscription(org_id, update)
+
+    # Deterministic plan resolution — update organizations.plan
+    try:
+        from app.core.plan_service import PlanService, resolve_price_id, Plan
+        resolved = resolve_price_id(price_id) if price_id else None
+        tier = resolved if resolved else {
+            "FREE": Plan.STARTER, "PRO": Plan.GROWTH, "ENTERPRISE": Plan.ELITE,
+        }.get(plan_name, Plan.STARTER)
+        PlanService.set_org_plan(org_id, tier, stripe_price_id=price_id or None,
+                                 subscription_status=status)
+    except Exception as e:
+        logger.warning("subscription.updated plan_service sync failed org=%s: %s", org_id, str(e)[:120])
+
     logger.info("subscription.updated: org=%s plan=%s status=%s", org_id, plan_name, status)
 
 
@@ -340,6 +353,15 @@ def _handle_subscription_deleted(sub_data: Dict[str, Any]) -> None:
         "max_memory_entries": limits["max_memory_entries"],
     }
     _upsert_subscription(org_id, update)
+
+    # Downgrade organizations.plan to starter
+    try:
+        from app.core.plan_service import PlanService, Plan
+        PlanService.set_org_plan(org_id, Plan.STARTER, stripe_price_id=None,
+                                 subscription_status="canceled")
+    except Exception as e:
+        logger.warning("subscription.deleted plan_service sync failed org=%s: %s", org_id, str(e)[:120])
+
     logger.info("subscription.deleted: org=%s → FREE / canceled", org_id)
 
 

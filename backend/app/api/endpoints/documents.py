@@ -151,7 +151,11 @@ async def upload_project_document(
     org_id = proj.data["org_id"]
     resolve_org_id_for_user(sb, user_id, org_id, request=request)
 
-    # Phase 18: Check subscription document limit before upload
+    # Subscription tier enforcement — document limit
+    from app.core.plan_service import PlanService
+    PlanService.enforce_documents_limit(org_id)
+
+    # Existing subscription.check_plan_limit for backward compat
     check_plan_limit(org_id, "documents")
 
     # Phase 5: Role enforcement — viewer/reviewer cannot upload documents

@@ -130,20 +130,44 @@ class BillingManager:
             "stripe_customer_id": customer_id,
             "stripe_subscription_id": subscription_id,
             "plan_tier": plan_tier,
+            "plan": plan_tier,
             "subscription_status": "active",
         }
 
         # Fetch subscription details for period dates
+        stripe_price_id = None
         if subscription_id:
             try:
                 sub = stripe.Subscription.retrieve(subscription_id)
                 update_data["current_period_start"] = _ts_to_iso(sub.current_period_start)
                 update_data["current_period_end"] = _ts_to_iso(sub.current_period_end)
+                # Extract price ID for deterministic plan resolution
+                items = (sub.get("items") or {}).get("data", [])
+                if items:
+                    stripe_price_id = items[0].get("price", {}).get("id")
             except Exception as e:
                 logger.warning("Failed to fetch subscription details: %s", str(e)[:120])
 
+        # Deterministic plan resolution from Stripe price ID
+        try:
+            from app.core.plan_service import PlanService, resolve_price_id, Plan
+            if stripe_price_id:
+                resolved = resolve_price_id(stripe_price_id)
+                if resolved:
+                    update_data["plan"] = resolved.value
+                    update_data["plan_tier"] = resolved.value
+                    update_data["stripe_price_id"] = stripe_price_id
+            PlanService.set_org_plan(
+                org_id,
+                Plan(update_data.get("plan", plan_tier)),
+                stripe_price_id=stripe_price_id,
+                subscription_status="active",
+            )
+        except Exception as e:
+            logger.warning("checkout plan resolution failed org=%s: %s", org_id, str(e)[:120])
+
         admin_sb.table("organizations").update(update_data).eq("id", org_id).execute()
-        logger.info("checkout.session.completed: org=%s plan=%s", org_id, plan_tier)
+        logger.info("checkout.session.completed: org=%s plan=%s", org_id, update_data.get("plan", plan_tier))
 
     @staticmethod
     def handle_subscription_updated(sub_data: dict) -> None:
@@ -160,12 +184,24 @@ class BillingManager:
             price_id = items[0].get("price", {}).get("id", "")
         plan_tier = PRICE_TO_PLAN.get(price_id, "starter")
 
+        # Deterministic plan resolution via PlanService
+        try:
+            from app.core.plan_service import resolve_price_id as _resolve
+            resolved = _resolve(price_id)
+            if resolved:
+                plan_tier = resolved.value
+        except Exception:
+            pass
+
         update_data = {
             "subscription_status": status,
             "plan_tier": plan_tier,
+            "plan": plan_tier,
             "current_period_start": _ts_to_iso(sub_data.get("current_period_start")),
             "current_period_end": _ts_to_iso(sub_data.get("current_period_end")),
         }
+        if price_id:
+            update_data["stripe_price_id"] = price_id
 
         # Find org by stripe_customer_id
         res = admin_sb.table("organizations") \
@@ -195,8 +231,10 @@ class BillingManager:
             org_id = res.data[0]["id"]
             admin_sb.table("organizations").update({
                 "plan_tier": "starter",
+                "plan": "starter",
                 "subscription_status": "canceled",
                 "stripe_subscription_id": None,
+                "stripe_price_id": None,
             }).eq("id", org_id).execute()
             logger.info("subscription.deleted: org=%s → starter", org_id)
 

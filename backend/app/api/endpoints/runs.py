@@ -130,7 +130,11 @@ def create_run(
     if not resolved_org_id:
         raise HTTPException(status_code=400, detail={"error": "org_required", "message": "No organization available"})
 
-    # Phase 18: Check subscription run limit before creating
+    # Subscription tier enforcement — run limit
+    from app.core.plan_service import PlanService
+    PlanService.enforce_runs_limit(resolved_org_id)
+
+    # Existing subscription.check_plan_limit for backward compat
     from app.core.subscription import check_plan_limit, log_usage_metric
     check_plan_limit(resolved_org_id, "runs")
 

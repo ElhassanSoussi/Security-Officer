@@ -182,7 +182,11 @@ def create_project(
     if not org_id:
         raise HTTPException(status_code=400, detail="No organization available for project creation")
 
-    # Phase 5: Role enforcement — viewer/reviewer cannot create projects
+    # Subscription tier enforcement — project limit
+    from app.core.plan_service import PlanService
+    PlanService.enforce_projects_limit(org_id)
+
+    # Role enforcement — viewer/reviewer cannot create projects
     _role = get_user_role(org_id, user_id, token.credentials)
     if not role_has_permission(_role or "", Permission.CREATE_PROJECT):
         raise HTTPException(status_code=403, detail={
