@@ -971,4 +971,23 @@ export class ApiClient {
         }
         return res.json();
     }
+
+    // ── Assistant ──────────────────────────────────────────────────────
+
+    static async sendAssistantMessage(
+        orgId: string,
+        message: string,
+        conversationId?: string,
+        token?: string,
+    ): Promise<{
+        conversation_id: string;
+        reply: string;
+        actions: { label: string; href: string }[];
+    }> {
+        return this.post(
+            "/assistant/message",
+            { org_id: orgId, message, conversation_id: conversationId },
+            token,
+        );
+    }
 }

@@ -11,7 +11,8 @@ import {
     Settings,
     FileSearch,
     LogOut,
-    BrainCircuit
+    BrainCircuit,
+    MessageSquare,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
@@ -26,17 +27,18 @@ export function Sidebar() {
     const [signingOut, setSigningOut] = useState(false);
 
     const links = [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/projects", label: "Projects", icon: FolderKanban },
-        { href: "/run", label: "Run Questionnaire", icon: PlayCircle },
-        { href: "/audit", label: "Audit Log", icon: FileSearch },
-        { href: "/intelligence", label: "Intelligence", icon: BrainCircuit },
-        { href: "/plans", label: "Plans & Billing", icon: CreditCard },
-        { href: "/settings", label: "Settings", icon: Settings },
+        { href: "/dashboard",  label: "Dashboard",          icon: LayoutDashboard },
+        { href: "/projects",   label: "Projects",           icon: FolderKanban },
+        { href: "/run",        label: "Run Questionnaire",  icon: PlayCircle },
+        { href: "/audit",      label: "Audit Log",          icon: FileSearch },
+        { href: "/intelligence", label: "Intelligence",     icon: BrainCircuit },
+        { href: "/assistant",  label: "Assistant",          icon: MessageSquare },
+        { href: "/plans",      label: "Plans & Billing",    icon: CreditCard },
+        { href: "/settings",   label: "Settings",           icon: Settings },
     ];
     // split into groups for visual separation
-    const primaryLinks = links.slice(0, 5);
-    const secondaryLinks = links.slice(5);
+    const primaryLinks = links.slice(0, 6);
+    const secondaryLinks = links.slice(6);
 
     useEffect(() => {
         async function loadBillingBadge() {

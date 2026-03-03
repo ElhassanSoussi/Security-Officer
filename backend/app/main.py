@@ -355,6 +355,7 @@ from app.api.endpoints import admin as admin_ep
 from app.api.endpoints import sales as sales_ep
 from app.api.endpoints import onboarding as onboarding_ep
 from app.api.endpoints import account as account_ep
+from app.api.endpoints import assistant as assistant_ep
 
 app.include_router(main_router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
@@ -372,3 +373,4 @@ app.include_router(admin_ep.router, prefix=settings.API_V1_STR, tags=["Admin", "
 app.include_router(sales_ep.router, prefix=settings.API_V1_STR, tags=["Sales", "Demo"])
 # Account profile + appearance
 app.include_router(account_ep.router, prefix=settings.API_V1_STR, tags=["Account"])
+app.include_router(assistant_ep.router, prefix=f"{settings.API_V1_STR}/assistant", tags=["Assistant"])
