@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 22 — Upgrade Nudge Panel
+ * Upgrade Nudge Panel
  *
  * A non-intrusive panel that shows current usage vs. plan limits
  * and highlights what the next tier unlocks. Professional tone, no aggressive marketing.
@@ -32,43 +32,50 @@ interface UpgradeNudgeProps {
     compact?: boolean;
 }
 
-const RESOURCE_NUDGES: Record<string, { label: string; proUnlock: string }> = {
+const RESOURCE_NUDGES: Record<string, { label: string; nextTierUnlock: string }> = {
     runs: {
         label: "analysis runs",
-        proUnlock: "100 runs/month + priority processing",
+        nextTierUnlock: "Higher run limits + priority processing",
     },
     documents: {
         label: "documents",
-        proUnlock: "500 documents + batch upload",
+        nextTierUnlock: "Higher document limits + batch upload",
     },
     memory: {
         label: "institutional memory entries",
-        proUnlock: "2,000 memory entries for smarter answers",
+        nextTierUnlock: "More memory entries for smarter answers",
     },
     evidence: {
         label: "evidence exports",
-        proUnlock: "Unlimited evidence exports + audit trail",
+        nextTierUnlock: "More evidence exports + enhanced audit trail",
     },
 };
+
+const PLAN_HIERARCHY = ["STARTER", "GROWTH", "ELITE"];
+
+function getNextTier(plan: string): string | null {
+    const idx = PLAN_HIERARCHY.indexOf(plan.toUpperCase());
+    if (idx < 0 || idx >= PLAN_HIERARCHY.length - 1) return null;
+    return PLAN_HIERARCHY[idx + 1];
+}
 
 export function UpgradeNudge({
     resource = "evidence",
     currentCount,
     limit,
-    plan = "FREE",
+    plan = "STARTER",
     message,
     show = true,
     compact = false,
 }: UpgradeNudgeProps) {
-    if (!show || plan.toUpperCase() !== "FREE") return null;
+    const nextTier = getNextTier(plan);
+    if (!show || !nextTier) return null;
 
     const nudge = RESOURCE_NUDGES[resource] ?? RESOURCE_NUDGES.evidence;
 
     const displayMessage =
         message ??
-        (resource === "evidence"
-            ? "Upgrade to Pro for unlimited evidence exports and enhanced compliance features."
-            : `You're approaching your ${nudge.label} limit. Upgrade for more capacity.`);
+        `You're approaching your ${nudge.label} limit. Upgrade to ${nextTier} for more capacity.`;
 
     if (compact) {
         return (
@@ -98,7 +105,7 @@ export function UpgradeNudge({
                         </p>
                     )}
                     <p className="text-xs text-blue-700 font-medium">
-                        Pro unlocks: {nudge.proUnlock}
+                        {nextTier} unlocks: {nudge.nextTierUnlock}
                     </p>
                 </div>
             </div>
@@ -109,7 +116,7 @@ export function UpgradeNudge({
                         className="gap-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs"
                     >
                         <Zap className="h-3.5 w-3.5" />
-                        View Pro Plan
+                        View Plans
                     </Button>
                 </Link>
             </div>

@@ -1,5 +1,5 @@
 /**
- * Demo Mode helpers — Phase 14
+ * Demo Mode helpers
  * Activated by ?demo=1 URL param OR NEXT_PUBLIC_DEMO_MODE=true env flag.
  */
 
@@ -331,7 +331,7 @@ export const DEMO_ACTIVITY = [
   { id: "act-10", event_type: "memory_reused", description: "Reused institutional memory for MFA policy (B15)", created_at: "2026-01-16T09:07:00Z" },
 ];
 
-// ── Phase 22: Evidence Vault Demo Records ──
+// ── Evidence Vault Demo Records ──
 
 export interface DemoEvidenceRecord {
   id: string;
@@ -373,7 +373,7 @@ export const DEMO_EVIDENCE_RECORDS: DemoEvidenceRecord[] = [
   },
 ];
 
-// ── Phase 22: Compliance Health Score Demo ──
+// ── Compliance Health Score Demo ──
 
 export const DEMO_HEALTH_SCORE = {
   overall_score: 82,

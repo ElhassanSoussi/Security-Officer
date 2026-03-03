@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 22 — Contact / Lead Capture Page (/contact)
+ * Contact / Lead Capture Page (/contact)
  *
  * Public page (no auth required). Submits to POST /api/v1/contact.
  * Fields: Company Name, Name, Email, Phone, Company Size, Message.

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const email = process.env.E2E_EMAIL;
 const password = process.env.E2E_PASSWORD;
 
-test.describe("Phase 1A auth happy path", () => {
+test.describe("Auth happy path", () => {
   test.skip(!email || !password, "Set E2E_EMAIL and E2E_PASSWORD to run this test");
 
   test("login -> dashboard -> org current -> settings/org 200", async ({ page }) => {

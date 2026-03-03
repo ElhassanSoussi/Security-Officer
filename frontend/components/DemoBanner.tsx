@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 22 — Demo Workspace Banner
+ * Demo Workspace Banner
  *
  * Shows a banner at the top of authenticated pages when demo mode is active.
  * Includes a "Reset Demo Data" button (admin-only, calls POST /admin/demo-reset).

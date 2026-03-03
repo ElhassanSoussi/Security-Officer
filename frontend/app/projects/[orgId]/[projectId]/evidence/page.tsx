@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 17 – Evidence Vault page
+ * Evidence Vault page
  * Route: /projects/[orgId]/[projectId]/evidence
  *
  * Shows all evidence packages generated for a project.

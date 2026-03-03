@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 18 — Usage Panel
+ * Usage Panel
  * Displays current-month usage vs plan limits with progress bars.
  * Shows "Upgrade Plan" CTA when at/near limits.
  */

@@ -38,17 +38,17 @@ export default function RunDetailPage() {
     const [orgId, setOrgId] = useState<string | null>(getStoredOrgId());
     const router = useRouter();
 
-    // Phase 14: RBAC
+    // RBAC
     const rbac = useRBAC(orgId);
 
-    // Phase 17: Evidence Vault state
+    // Evidence Vault state
     const [evidenceGenerating, setEvidenceGenerating] = useState(false);
     const [evidenceHash, setEvidenceHash] = useState<string | null>(null);
     const [unlocking, setUnlocking] = useState(false);
 
     const { toast } = useToast();
 
-    /* ── Run Intelligence (Phase 11) ── */
+    /* ── Run Intelligence ── */
     const runIntelligence = useMemo(() => {
         if (!audits || audits.length === 0) return null;
         const total = audits.length;
@@ -108,7 +108,7 @@ export default function RunDetailPage() {
         return "outline";
     };
 
-    // Phase 17: Generate evidence package handler
+    // Generate evidence package handler
     async function handleGenerateEvidence() {
         if (!run) return;
         setEvidenceGenerating(true);
@@ -138,7 +138,7 @@ export default function RunDetailPage() {
         }
     }
 
-    // Phase 17: Unlock run handler (admin/owner only)
+    // Unlock run handler (admin/owner only)
     async function handleUnlockRun() {
         if (!run) return;
         setUnlocking(true);
@@ -240,7 +240,7 @@ export default function RunDetailPage() {
                 actions={
                     (['COMPLETED','EXPORTED','ANALYZED'] as string[]).includes(run.status) && (
                         <div className="flex items-center gap-2">
-                            {/* Phase 17: Generate Evidence */}
+                            {/* Generate Evidence */}
                             <Button
                                 variant="outline"
                                 className="gap-2"
@@ -374,7 +374,7 @@ export default function RunDetailPage() {
                 <StepHeader steps={PIPELINE_STEPS} currentStepId={pipelineStepId} />
             )}
 
-            {/* Phase 17: Lock Banner */}
+            {/* Lock Banner */}
             {(run as any).is_locked && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-blue-800">
@@ -409,7 +409,7 @@ export default function RunDetailPage() {
                 </div>
             )}
 
-            {/* Phase 14: Run Summary Cards */}
+            {/* Run Summary Cards */}
             {runIntelligence && (
                 <RunSummaryCards
                     total={runIntelligence.total}
@@ -473,7 +473,7 @@ export default function RunDetailPage() {
                 </Card>
             </div>
 
-            {/* Phase 15: Risk Panel */}
+            {/* Risk Panel */}
             {runIntelligence && (
                 <RunRiskPanel
                     total={runIntelligence.total}
@@ -483,7 +483,7 @@ export default function RunDetailPage() {
                 />
             )}
 
-            {/* ── Run Intelligence Card (Phase 11) ── */}
+            {/* ── Run Intelligence Card ── */}
             {runIntelligence && (
                 <Card>
                     <CardHeader>
@@ -557,7 +557,7 @@ export default function RunDetailPage() {
                 </Card>
             )}
 
-            {/* Phase 14: Export Gate Panel + Review Link */}
+            {/* Export Gate Panel + Review Link */}
             {(['COMPLETED', 'EXPORTED', 'ANALYZED'] as string[]).includes(run.status) && (
                 <div className="grid gap-4 md:grid-cols-2">
                     <ExportGatePanel
@@ -596,7 +596,7 @@ export default function RunDetailPage() {
                 </div>
             )}
 
-            {/* Phase 15: Run Comparison (Delta Mode) */}
+            {/* Run Comparison (Delta Mode) */}
             {(['COMPLETED', 'EXPORTED', 'ANALYZED'] as string[]).includes(run.status) && orgId && (
                 <RunComparePanel runId={run.id} orgId={orgId} token={token} />
             )}

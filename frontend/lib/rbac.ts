@@ -1,5 +1,5 @@
 /**
- * RBAC helper — Phase 14
+ * RBAC helper
  * Roles: viewer < reviewer < compliance_manager < admin < owner
  */
 

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 18 — Plan Limit Modal
+ * Plan Limit Modal
  *
  * Listens for the global "plan:limit_reached" CustomEvent dispatched by
  * ApiClient.fetch() whenever the backend returns HTTP 402 PLAN_LIMIT_REACHED.

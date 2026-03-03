@@ -1,5 +1,5 @@
 /**
- * AnswerStatusBadge — renders the Phase 11 answer-level status as a semantic badge.
+ * AnswerStatusBadge — renders the answer-level status as a semantic badge.
  */
 "use client";
 
@@ -54,7 +54,7 @@ export function AnswerStatusBadge({ status, className }: AnswerStatusBadgeProps)
   );
 }
 
-/** Maps legacy review_status to Phase 11 AnswerStatus */
+/** Maps legacy review_status to AnswerStatus */
 export function deriveAnswerStatus(item: {
   review_status?: string;
   edited_by_user?: boolean;

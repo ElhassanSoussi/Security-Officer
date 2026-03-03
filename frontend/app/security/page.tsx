@@ -180,7 +180,7 @@ export default function SecurityPage() {
                 })}
             </div>
 
-            {/* Phase 21: Vendor & Third-Party Disclosure */}
+            {/* Vendor & Third-Party Disclosure */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base">Vendor &amp; Third-Party Disclosures</CardTitle>

@@ -103,7 +103,7 @@ export interface QuestionItem {
     review_status?: "pending" | "approved" | "rejected";
 }
 
-// ── Phase 6: Project Overview & Onboarding ──────────────────────────────────
+// ── Project Overview & Onboarding ──────────────────────────────────
 
 export interface OnboardingStep {
     completed: boolean;
@@ -134,7 +134,7 @@ export interface ProjectOverview {
     onboarding: OnboardingState;
 }
 
-// ── Phase 11: Product Intelligence & Decision Layer ─────────────────────────
+// ── Product Intelligence & Decision Layer ─────────────────────────
 
 export type AnswerStatus = "auto_generated" | "under_review" | "approved" | "flagged" | "edited";
 

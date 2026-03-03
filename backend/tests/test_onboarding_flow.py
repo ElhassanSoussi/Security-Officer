@@ -242,7 +242,8 @@ def test_25_guide_exports_named_export():
 
 def test_26_dashboard_imports_onboarding_guide():
     src = _read(DASHBOARD_PATH)
-    assert "OnboardingGuide" in src
+    # OnboardingGuide was replaced by the compact OnboardingChecklist
+    assert "OnboardingChecklist" in src
 
 
 def test_27_guide_defines_all_5_steps():

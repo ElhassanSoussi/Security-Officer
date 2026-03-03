@@ -470,7 +470,8 @@ class TestFrontendSOC2:
         assert "Sentry" in content
 
     def test_57_settings_page_has_access_report_download(self):
-        path = ROOT_DIR / "frontend" / "app" / "settings" / "page.tsx"
+        # Access Audit Report was moved to the dedicated security settings page
+        path = ROOT_DIR / "frontend" / "app" / "settings" / "security" / "page.tsx"
         content = path.read_text()
         assert "Access Audit Report" in content
         assert "Download CSV" in content

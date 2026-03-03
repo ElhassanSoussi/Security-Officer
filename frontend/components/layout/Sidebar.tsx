@@ -174,9 +174,11 @@ export function Sidebar() {
                         <span className="text-xs text-slate-400">{exportsLabel}</span>
                     </div>
                     <span className="text-sm font-semibold text-white">{planLabel}</span>
-                    <Link href="/plans" className="block mt-1.5 text-xs text-blue-400 hover:text-blue-300">
-                        Upgrade to Pro &rarr;
-                    </Link>
+                    {planLabel !== "ELITE" && (
+                        <Link href="/plans" className="block mt-1.5 text-xs text-blue-400 hover:text-blue-300">
+                            View Plans &rarr;
+                        </Link>
+                    )}
                 </div>
                 <button
                     type="button"

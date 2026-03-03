@@ -101,7 +101,7 @@ export default function ProjectsPage() {
             setIsOpen(false);
             toast({ title: "Project Created", description: `"${created.project_name || newProjectName.trim()}" is ready.`, variant: "success" });
 
-            // Phase 26 onboarding: completing step 2 (create a project) advances to step 3
+            // Onboarding: completing step 2 (create a project) advances to step 3
             try {
                 if (token) {
                     const st = await ApiClient.getOnboardingState(token);

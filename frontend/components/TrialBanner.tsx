@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 22 — Trial Conversion Banner
+ * Trial Conversion Banner
  *
  * Shows a banner when the user is on a trialing subscription.
  * Displays days remaining + upgrade CTA.

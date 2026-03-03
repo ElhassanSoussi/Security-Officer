@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 22 — Sales Analytics Admin Page (/admin/sales)
+ * Sales Analytics Admin Page (/admin/sales)
  *
  * Admin-only dashboard displaying sales metrics from GET /admin/sales-analytics.
  * Shows: total_leads, enterprise_interest_count, conversion_rate,

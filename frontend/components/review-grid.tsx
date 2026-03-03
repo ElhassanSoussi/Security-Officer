@@ -159,7 +159,7 @@ export function ReviewGrid({ items, onItemsChange, uploadDocsHref, runId, token 
                                         <div className="text-blue-700 whitespace-pre-wrap">{item.source_excerpt}</div>
                                     </div>
                                 )}
-                                {/* Source Transparency Panel (Phase 11) */}
+                                {/* Source Transparency Panel */}
                                 <SourceTransparency
                                     confidence={item.confidence}
                                     confidenceScore={null}

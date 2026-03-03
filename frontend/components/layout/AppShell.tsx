@@ -41,8 +41,10 @@ export function AppShell({ children }: AppShellProps) {
                 <DemoBanner />
                 <BillingPastDueBanner />
                 <TrialBanner />
-                <main className="flex-1 px-4 py-6 md:px-8 md:py-6">
-                    <ErrorBoundary>{children}</ErrorBoundary>
+                <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+                    <div className="page-container">
+                        <ErrorBoundary>{children}</ErrorBoundary>
+                    </div>
                 </main>
                 <AppFooter />
             </div>

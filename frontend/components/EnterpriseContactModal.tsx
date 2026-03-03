@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 22 — Enterprise Contact Modal
+ * Enterprise Contact Modal
  *
  * Shown instead of Stripe checkout when user clicks "Enterprise" plan.
  * Tracks enterprise interest event and provides options to contact sales

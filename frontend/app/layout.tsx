@@ -56,7 +56,7 @@ export default function RootLayout({
 
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className="antialiased bg-slate-50 min-h-screen">
+            <body className="antialiased bg-background min-h-screen">
                 <ThemeProvider>
                 <DevBanner />
                 <EmailVerificationBanner />

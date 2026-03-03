@@ -182,7 +182,7 @@ export default function RunPage() {
             setQuestions(data.data || []); // API changed to return {data: items}
             setStep("review");
 
-            // Phase 26 onboarding: completing step 3 advances to step 4
+            // Onboarding: completing step 3 advances to step 4
             try {
                 const tok = freshToken;
                 const st = await ApiClient.getOnboardingState(tok);
@@ -222,7 +222,7 @@ export default function RunPage() {
             setToken(freshToken);
             await ApiClient.generateExport(file, questions, currentOrgId, selectedProjectId || undefined, runData?.id, freshToken);
 
-            // Phase 26 onboarding: export success completes onboarding
+            // Onboarding: export success completes onboarding
             try {
                 const st = await ApiClient.getOnboardingState(freshToken);
                 if (!st.onboarding_completed && st.onboarding_step === 5) {
@@ -260,7 +260,7 @@ export default function RunPage() {
                 subtitle="Upload a vendor security questionnaire and generate AI-powered answers."
             />
 
-            {/* Phase 26 onboarding banners */}
+            {/* Onboarding banners */}
             <OnboardingStepBanner expectedStep={3} />
             <OnboardingStepBanner expectedStep={5} />
 

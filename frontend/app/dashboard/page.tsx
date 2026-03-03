@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { FolderKanban, FileText, PlayCircle, Clock, ShieldCheck, BarChart3, AlertTriangle, TrendingUp } from "lucide-react";
+import { FolderKanban, FileText, PlayCircle, Clock, BarChart3, AlertTriangle, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ApiClient } from "@/lib/api";
@@ -22,7 +22,6 @@ import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ComplianceHealthPanel } from "@/components/ComplianceHealthPanel";
 import { UsagePanel } from "@/components/UsagePanel";
 import { isDemoMode, DEMO_STATS, DEMO_ACTIVITY, DEMO_AUDITS, DEMO_ORG_ID } from "@/lib/demo-data";
-import { OnboardingGuide } from "@/components/onboarding/OnboardingGuide";
 
 export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -61,7 +60,7 @@ export default function Dashboard() {
         };
     }, [auditData]);
 
-    // ── Mock monthly trends (derived from activity timestamps) ──
+    // ── Monthly trends (derived from activity timestamps) ──
     const monthlyTrends = useMemo(() => {
         const now = new Date();
         const months: { label: string; value: number }[] = [];
@@ -82,7 +81,6 @@ export default function Dashboard() {
             try {
                 setError("");
 
-                // Demo Mode short-circuit
                 if (isDemoMode()) {
                     setStats(DEMO_STATS);
                     setActivity(DEMO_ACTIVITY);
@@ -139,9 +137,9 @@ export default function Dashboard() {
     }, [router]);
 
     const STAT_CARDS = [
-        { label: "Active Projects", value: stats?.active_projects ?? "-", icon: FolderKanban, color: "text-blue-600 bg-blue-100" },
-        { label: "Documents Ingested", value: stats?.documents_ingested ?? "-", icon: FileText, color: "text-purple-600 bg-purple-100" },
-        { label: "Runs Completed", value: stats?.runs_completed ?? "-", icon: PlayCircle, color: "text-green-600 bg-green-100" },
+        { label: "Active Projects", value: stats?.active_projects ?? "-", icon: FolderKanban, color: "text-blue-600 bg-blue-50" },
+        { label: "Documents Ingested", value: stats?.documents_ingested ?? "-", icon: FileText, color: "text-purple-600 bg-purple-50" },
+        { label: "Runs Completed", value: stats?.runs_completed ?? "-", icon: PlayCircle, color: "text-green-600 bg-green-50" },
     ];
 
     return (
@@ -159,16 +157,16 @@ export default function Dashboard() {
                                     window.location.href = "?demo=1";
                                 }}
                             >
-                                🧪 Load Demo Workspace
+                                🧪 Demo
                             </Button>
                         )}
                         <Link href="/projects">
-                            <Button variant="outline">
-                                <FolderKanban className="mr-2 h-4 w-4" /> Manage Projects
+                            <Button variant="outline" size="sm">
+                                <FolderKanban className="mr-2 h-4 w-4" /> Projects
                             </Button>
                         </Link>
                         <Link href="/run">
-                            <Button>
+                            <Button size="sm">
                                 <PlayCircle className="mr-2 h-4 w-4" /> Run Analysis
                             </Button>
                         </Link>
@@ -176,25 +174,19 @@ export default function Dashboard() {
                 }
             />
 
-            {/* Phase 26: New Customer Onboarding Guide */}
-            {!demoActive && (
-                <OnboardingGuide variant="banner" />
-            )}
-
             {/* Demo Mode Banner */}
             {demoActive && (
-                <div className="rounded-lg border border-purple-200 bg-purple-50/60 px-4 py-3 flex items-center gap-3">
-                    <span className="text-lg">🧪</span>
+                <div className="rounded-lg border border-purple-200 bg-purple-50/60 px-4 py-2.5 flex items-center gap-3">
+                    <span className="text-base">🧪</span>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-purple-800">Demo Mode Active</p>
-                        <p className="text-xs text-purple-700">
-                            You&apos;re viewing pre-seeded demo data. No real data is loaded or modified.
+                        <p className="text-sm font-medium text-purple-800">
+                            Demo Mode — <span className="font-normal text-purple-700">viewing pre-seeded data, nothing is modified.</span>
                         </p>
                     </div>
                     <Button
                         size="sm"
                         variant="outline"
-                        className="shrink-0 border-purple-300 text-purple-700 hover:bg-purple-100"
+                        className="shrink-0 h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-100"
                         onClick={() => {
                             window.location.href = window.location.pathname;
                         }}
@@ -203,24 +195,6 @@ export default function Dashboard() {
                     </Button>
                 </div>
             )}
-
-            {/* Product Explanation */}
-            <Card className="border-blue-100 bg-gradient-to-br from-blue-50/60 to-background">
-                <CardContent className="flex items-start gap-4 py-4">
-                    <div className="rounded-lg bg-blue-100 p-2.5 shrink-0">
-                        <ShieldCheck className="h-5 w-5 text-blue-700" />
-                    </div>
-                    <div className="space-y-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-foreground">NYC Compliance Architect</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Automate high-stakes government security questionnaires — SCA, MTA, and PASSPort —
-                            using your own company documents as the source of truth. Upload a questionnaire,
-                            let AI generate answers with confidence scores, review and refine, then export a
-                            submission-ready Excel file.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
 
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -247,7 +221,7 @@ export default function Dashboard() {
 
             {/* Two-column layout: Getting Started + Recent Activity */}
             <div className="grid gap-6 lg:grid-cols-2">
-                {/* Onboarding Checklist — Phase 14 */}
+                {/* Onboarding Checklist */}
                 <OnboardingChecklist
                     scopeId={orgId || "global"}
                     derivedFrom={{
@@ -267,8 +241,8 @@ export default function Dashboard() {
                 {/* Recent Activity */}
                 <Card>
                     <CardHeader className="pb-3">
-                        <CardTitle>Recent Activity</CardTitle>
-                        <CardDescription className="mt-1">Latest actions across all projects.</CardDescription>
+                        <CardTitle className="text-base">Recent Activity</CardTitle>
+                        <CardDescription>Latest actions across all projects.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading && <ActivityTimeline activities={[]} loading={true} />}
@@ -293,16 +267,16 @@ export default function Dashboard() {
                 </Card>
             </div>
 
-            {/* ── Compliance Insights (Phase 11) ── */}
+            {/* Compliance Insights */}
             {!loading && insights && (
                 <Card>
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <div>
-                                <CardTitle className="flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2 text-base">
                                     <BarChart3 className="h-4 w-4 text-blue-600" /> Compliance Insights
                                 </CardTitle>
-                                <CardDescription className="mt-1">Confidence overview and risk indicators across all runs.</CardDescription>
+                                <CardDescription>Confidence overview and risk indicators across all runs.</CardDescription>
                             </div>
                             <Link href="/intelligence">
                                 <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
@@ -328,7 +302,6 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        {/* Confidence Bar */}
                         <ConfidenceBar
                             segments={[
                                 { label: "High", value: insights.distribution.high, color: "bg-green-500" },
@@ -337,7 +310,7 @@ export default function Dashboard() {
                             ]}
                         />
 
-                        {/* Risk Indicators Row */}
+                        {/* Risk Indicators */}
                         <div className="grid gap-3 sm:grid-cols-3">
                             <div className="flex items-center gap-2 rounded-md border px-3 py-2">
                                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
@@ -362,7 +335,7 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        {/* Activity Trends (mini bar chart) */}
+                        {/* Activity Trends */}
                         <div>
                             <p className="text-xs font-medium text-muted-foreground mb-2">Activity Trend (last 6 months)</p>
                             <MiniBarChart data={monthlyTrends} barColor="bg-primary" maxHeight={48} />
@@ -371,12 +344,12 @@ export default function Dashboard() {
                 </Card>
             )}
 
-            {/* Phase 15: Compliance Health Panel */}
+            {/* Compliance Health Panel */}
             {!loading && !demoActive && orgId && (
                 <ComplianceHealthPanel orgId={orgId} token={token} />
             )}
 
-            {/* Phase 18: Usage Panel */}
+            {/* Usage Panel */}
             {!loading && !demoActive && orgId && (
                 <UsagePanel orgId={orgId} token={token} />
             )}

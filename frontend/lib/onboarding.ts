@@ -1,5 +1,5 @@
 /**
- * Onboarding state helpers — Phase 14
+ * Onboarding state helpers
  * Persists onboarding progress in localStorage (per-org or per-project).
  * Falls back gracefully when localStorage is unavailable.
  */

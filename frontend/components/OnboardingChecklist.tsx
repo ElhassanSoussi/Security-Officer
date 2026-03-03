@@ -87,17 +87,15 @@ export function OnboardingChecklist({
   const progressPct = Math.round((completedCount / totalCount) * 100);
 
   return (
-    <Card className={`border-blue-100 bg-gradient-to-br from-blue-50/40 to-background ${className}`}>
+    <Card className={`border-border ${className}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-md bg-blue-100 p-1.5">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-            </div>
-            <CardTitle className="text-base">{title}</CardTitle>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-semibold">{title}</CardTitle>
             <Badge
               variant="outline"
-              className="text-xs bg-blue-50 text-blue-700 border-blue-200 px-2 py-0.5"
+              className="text-[10px] bg-muted/50 text-muted-foreground border-border px-1.5 py-0"
             >
               {completedCount}/{totalCount}
             </Badge>
@@ -132,64 +130,52 @@ export function OnboardingChecklist({
             value={completedCount}
             max={totalCount}
             aria-label={`Onboarding progress: ${completedCount} of ${totalCount} steps complete`}
-            className="w-full h-1.5 rounded-full overflow-hidden accent-blue-500 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500 [&::-moz-progress-bar]:rounded-full"
+            className="w-full h-1 rounded-full overflow-hidden accent-blue-500 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500 [&::-moz-progress-bar]:rounded-full"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             {allDone
-              ? "🎉 All steps complete! You're ready to export."
-              : `${progressPct}% complete — ${totalCount - completedCount} step${totalCount - completedCount !== 1 ? "s" : ""} remaining`}
+              ? "🎉 All steps complete!"
+              : `${progressPct}% — ${totalCount - completedCount} remaining`}
           </p>
         </div>
       </CardHeader>
 
       {!collapsed && (
         <CardContent className="pt-0">
-          <ol className="space-y-1.5">
-            {ONBOARDING_STEPS.map((step, idx) => {
+          <ol className="space-y-1">
+            {ONBOARDING_STEPS.map((step) => {
               const isDone = done.has(step.id);
               return (
                 <li
                   key={step.id}
-                  className={`flex items-start justify-between gap-3 rounded-md border px-3 py-2 transition-colors ${
+                  className={`flex items-center justify-between gap-3 rounded-md px-3 py-1.5 transition-colors text-sm ${
                     isDone
-                      ? "border-green-100 bg-green-50/60"
-                      : "border-border bg-card hover:bg-muted/40"
+                      ? "bg-muted/40 text-muted-foreground"
+                      : "hover:bg-muted/30"
                   }`}
                 >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="mt-0.5 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="shrink-0">
                       {isDone ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                       ) : (
-                        <Circle className="h-4 w-4 text-muted-foreground/40" />
+                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <p
-                        className={`text-sm font-medium ${
-                          isDone
-                            ? "text-muted-foreground line-through decoration-muted-foreground/30"
-                            : "text-foreground"
-                        }`}
-                      >
-                        <span className="text-muted-foreground/50 mr-1.5 font-normal">
-                          {idx + 1}.
-                        </span>
-                        {step.label}
-                      </p>
-                      {!isDone && (
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          {step.description}
-                        </p>
-                      )}
-                    </div>
+                    <span
+                      className={`text-sm ${
+                        isDone ? "line-through decoration-muted-foreground/30" : "text-foreground font-medium"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
                   </div>
                   {!isDone && (
                     <Link href={step.href} className="shrink-0">
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="h-7 text-xs whitespace-nowrap"
+                        variant="ghost"
+                        className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
                       >
                         {step.actionLabel} →
                       </Button>
