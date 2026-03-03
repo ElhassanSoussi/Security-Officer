@@ -72,8 +72,8 @@ export class ApiClient {
             headers["Authorization"] = `Bearer ${authToken.trim()}`;
         }
 
-        // Also support JSON body by default if method is POST/PUT
-        if (options.method && ["POST", "PUT"].includes(options.method) && !(options.body instanceof FormData)) {
+        // Also support JSON body by default if method is POST/PUT/PATCH
+        if (options.method && ["POST", "PUT", "PATCH"].includes(options.method) && !(options.body instanceof FormData)) {
             headers["Content-Type"] = "application/json";
         }
 
