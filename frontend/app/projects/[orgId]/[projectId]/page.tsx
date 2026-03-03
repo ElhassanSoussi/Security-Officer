@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/toaster";
 import { ProjectDocument, ProjectOverview, OnboardingState } from "@/types";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
+import { OnboardingStepBanner } from "@/components/onboarding/OnboardingStepBanner";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -122,6 +123,9 @@ export default function ProjectDetail() {
 
     return (
         <div className="space-y-8 p-8">
+            {/* Phase 26: Onboarding step 1 banner (document upload) */}
+            <OnboardingStepBanner expectedStep={1} />
+            
             <div>
                 <PageHeader
                     breadcrumbs={
@@ -568,6 +572,18 @@ function ProjectDocumentsList({ projectId, orgId, token }: { projectId: string; 
             await ApiClient.uploadProjectDocument(projectId, file, token);
             toast({ title: "Upload Complete", description: `${file.name} added to Knowledge Vault.`, variant: "success" });
             await loadDocs();
+            
+            // Phase 26 onboarding: completing step 1 (upload document) advances to step 2
+            try {
+                if (token) {
+                    const st = await ApiClient.getOnboardingState(token);
+                    if (!st.onboarding_completed && st.onboarding_step === 1) {
+                        await ApiClient.patchOnboardingState({ onboarding_step: 2 }, token);
+                    }
+                }
+            } catch {
+                // ignore onboarding errors
+            }
         } catch (err: any) {
             toast({ title: "Upload Failed", description: err?.message || "Upload failed", variant: "destructive" });
         } finally {
