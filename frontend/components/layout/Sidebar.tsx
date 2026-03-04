@@ -6,7 +6,6 @@ import {
     LayoutDashboard,
     FolderKanban,
     PlayCircle,
-    CreditCard,
     ShieldCheck,
     Settings,
     FileSearch,
@@ -28,15 +27,14 @@ export function Sidebar() {
     const [signingOut, setSigningOut] = useState(false);
 
     const links = [
-        { href: "/dashboard",  label: "Dashboard",          icon: LayoutDashboard },
-        { href: "/projects",   label: "Projects",           icon: FolderKanban },
-        { href: "/run",        label: "Run Questionnaire",  icon: PlayCircle },
-        { href: "/audit",      label: "Audit Review",       icon: FileSearch },
-        { href: "/activity",   label: "Activity Log",       icon: ClipboardList },
-        { href: "/intelligence", label: "Intelligence",     icon: BrainCircuit },
-        { href: "/assistant",  label: "Assistant",          icon: MessageSquare },
-        { href: "/plans",      label: "Plans & Billing",    icon: CreditCard },
-        { href: "/settings",   label: "Settings",           icon: Settings },
+        { href: "/dashboard",    label: "Dashboard",         icon: LayoutDashboard },
+        { href: "/projects",     label: "Projects",          icon: FolderKanban },
+        { href: "/run",          label: "Run Questionnaire", icon: PlayCircle },
+        { href: "/audit",        label: "Audit Review",      icon: FileSearch },
+        { href: "/activity",     label: "Activity Log",      icon: ClipboardList },
+        { href: "/intelligence", label: "Intelligence",      icon: BrainCircuit },
+        { href: "/assistant",    label: "Assistant",         icon: MessageSquare },
+        { href: "/settings",     label: "Settings",          icon: Settings },
     ];
     // split into groups for visual separation
     const primaryLinks = links.slice(0, 7);

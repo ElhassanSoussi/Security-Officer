@@ -3,6 +3,7 @@ Account Profile & Appearance API.
 Allows authenticated users to manage their own profile and avatar.
 """
 from typing import Optional
+import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,6 +16,7 @@ from app.core.database import get_supabase_admin
 router = APIRouter()
 security = HTTPBearer()
 settings = get_settings()
+logger = logging.getLogger("api.account")
 
 ALLOWED_THEMES = {"light", "dark", "system"}
 AVATAR_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
@@ -52,14 +54,39 @@ class ProfilePatchRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _table_missing(exc: Exception) -> bool:
+    """Return True if the exception indicates the user_profiles table doesn't exist."""
+    msg = str(exc)
+    return "PGRST205" in msg or "user_profiles" in msg or "does not exist" in msg or "schema cache" in msg
+
+
+def _default_profile(user_id: str, email: Optional[str] = None) -> dict:
+    """Return a zero-row profile dict used as fallback when the DB table is absent."""
+    return {
+        "user_id": user_id,
+        "email": email,
+        "display_name": None,
+        "avatar_url": None,
+        "public_email": None,
+        "theme_preference": "system",
+    }
+
+
 def _get_or_create_profile(user_id: str, email: Optional[str] = None) -> dict:
-    """Fetch the user_profiles row, creating a default if absent."""
+    """Fetch the user_profiles row, creating a default if absent.
+    Degrades gracefully if the table has not been migrated yet."""
     sb = get_supabase_admin()
-    res = sb.table("user_profiles").select("*").eq("user_id", user_id).limit(1).execute()
-    if res.data:
-        row = res.data[0]
-        row.setdefault("email", email)
-        return row
+    try:
+        res = sb.table("user_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if res.data:
+            row = res.data[0]
+            row.setdefault("email", email)
+            return row
+    except Exception as exc:
+        if _table_missing(exc):
+            logger.warning("user_profiles table missing — returning default profile (run migration 019)")
+            return _default_profile(user_id, email)
+        raise
 
     # First access — insert default row
     new_row = {
@@ -72,10 +99,16 @@ def _get_or_create_profile(user_id: str, email: Optional[str] = None) -> dict:
     try:
         ins = sb.table("user_profiles").insert(new_row).execute()
         row = ins.data[0] if ins.data else new_row
-    except Exception:
+    except Exception as exc:
+        if _table_missing(exc):
+            logger.warning("user_profiles table missing — returning default profile (run migration 019)")
+            return _default_profile(user_id, email)
         # Race condition: another request inserted first — re-fetch
-        res2 = sb.table("user_profiles").select("*").eq("user_id", user_id).limit(1).execute()
-        row = res2.data[0] if res2.data else new_row
+        try:
+            res2 = sb.table("user_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+            row = res2.data[0] if res2.data else new_row
+        except Exception:
+            row = new_row
 
     row.setdefault("email", email)
     return row
@@ -145,8 +178,15 @@ def patch_account_profile(
     _get_or_create_profile(user_id, email)
 
     sb = get_supabase_admin()
-    res = sb.table("user_profiles").update(changes).eq("user_id", user_id).execute()
-    row = res.data[0] if res.data else _get_or_create_profile(user_id, email)
+    try:
+        res = sb.table("user_profiles").update(changes).eq("user_id", user_id).execute()
+        row = res.data[0] if res.data else _get_or_create_profile(user_id, email)
+    except Exception as exc:
+        if _table_missing(exc):
+            logger.warning("user_profiles table missing — patch skipped, returning default")
+            row = _default_profile(user_id, email)
+        else:
+            raise
 
     return ProfileResponse(
         user_id=user_id,
@@ -217,8 +257,16 @@ async def patch_account_avatar(
 
     # Persist in user_profiles
     _get_or_create_profile(user_id, email)
-    res = sb.table("user_profiles").update({"avatar_url": public_url}).eq("user_id", user_id).execute()
-    row = res.data[0] if res.data else _get_or_create_profile(user_id, email)
+    try:
+        res = sb.table("user_profiles").update({"avatar_url": public_url}).eq("user_id", user_id).execute()
+        row = res.data[0] if res.data else _get_or_create_profile(user_id, email)
+    except Exception as exc:
+        if _table_missing(exc):
+            logger.warning("user_profiles table missing — avatar saved to storage but not persisted in DB")
+            row = _default_profile(user_id, email)
+            row["avatar_url"] = public_url
+        else:
+            raise
 
     return ProfileResponse(
         user_id=user_id,
