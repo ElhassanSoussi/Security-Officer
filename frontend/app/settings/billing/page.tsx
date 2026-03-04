@@ -23,6 +23,7 @@ import {
     RefreshCw,
     ExternalLink,
     ArrowUpRight,
+    Table2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +133,142 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
     );
 }
 
+// ─── Plan Comparison Table ───────────────────────────────────────────────────
+
+interface PlanCol {
+    id: string;
+    label: string;
+    price: string;
+    projects: string;
+    documents: string;
+    runs: string;
+    color: string;
+    recommended?: boolean;
+}
+
+const PLAN_COLS: PlanCol[] = [
+    {
+        id: "starter",
+        label: "Starter",
+        price: "$149/mo",
+        projects: "5",
+        documents: "25",
+        runs: "10 / month",
+        color: "border-slate-200",
+    },
+    {
+        id: "growth",
+        label: "Growth",
+        price: "$499/mo",
+        projects: "25",
+        documents: "500",
+        runs: "100 / month",
+        color: "border-blue-300",
+    },
+    {
+        id: "elite",
+        label: "Elite",
+        price: "$1,499/mo",
+        projects: "10,000",
+        documents: "100,000",
+        runs: "10,000 / month",
+        color: "border-violet-300",
+    },
+];
+
+const PLAN_HEADER_CLASS: Record<string, string> = {
+    starter: "bg-slate-50 text-slate-700",
+    growth:  "bg-blue-50 text-blue-800",
+    elite:   "bg-violet-50 text-violet-800",
+};
+
+const PLAN_CURRENT_RING: Record<string, string> = {
+    starter: "ring-2 ring-slate-400",
+    growth:  "ring-2 ring-blue-500",
+    elite:   "ring-2 ring-violet-500",
+};
+
+function PlanComparisonTable({ currentPlan, nextPlan }: { currentPlan: string; nextPlan: string | null }) {
+    const rows = [
+        { label: "Projects",           key: "projects" as keyof PlanCol },
+        { label: "Documents",          key: "documents" as keyof PlanCol },
+        { label: "Analysis Runs",      key: "runs" as keyof PlanCol },
+        { label: "Price",              key: "price" as keyof PlanCol },
+    ];
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                    <Table2 className="h-4 w-4 text-muted-foreground" />
+                    Plan Comparison
+                </CardTitle>
+                <CardDescription>
+                    Limits across all tiers — your current plan is highlighted.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+                <table className="w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                        <tr>
+                            <th className="text-left py-2 pr-4 text-xs text-muted-foreground font-medium w-28" />
+                            {PLAN_COLS.map((col) => {
+                                const isCurrent = col.id === currentPlan;
+                                const isNext    = col.id === nextPlan;
+                                return (
+                                    <th
+                                        key={col.id}
+                                        className={`
+                                            text-center py-2 px-4 rounded-t-lg font-semibold text-xs uppercase tracking-wide
+                                            ${PLAN_HEADER_CLASS[col.id]}
+                                            ${isCurrent ? PLAN_CURRENT_RING[col.id] : ""}
+                                        `}
+                                    >
+                                        <div className="flex flex-col items-center gap-1">
+                                            {col.label}
+                                            {isCurrent && (
+                                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/70 border border-current opacity-80">
+                                                    Current
+                                                </span>
+                                            )}
+                                            {isNext && !isCurrent && (
+                                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/70 border border-blue-400 text-blue-700">
+                                                    Recommended
+                                                </span>
+                                            )}
+                                        </div>
+                                    </th>
+                                );
+                            })}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map(({ label, key }, rowIdx) => (
+                            <tr key={key} className={rowIdx % 2 === 0 ? "bg-muted/30" : ""}>
+                                <td className="py-2.5 pr-4 text-muted-foreground font-medium text-xs">{label}</td>
+                                {PLAN_COLS.map((col) => {
+                                    const isCurrent = col.id === currentPlan;
+                                    return (
+                                        <td
+                                            key={col.id}
+                                            className={`
+                                                text-center py-2.5 px-4 font-medium
+                                                ${isCurrent ? "text-foreground" : "text-muted-foreground"}
+                                            `}
+                                        >
+                                            {col[key]}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </CardContent>
+        </Card>
+    );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
@@ -180,6 +317,7 @@ export default function BillingPage() {
 
     const plan = data?.plan?.toLowerCase() ?? "starter";
     const isElite = plan === "elite";
+    const nextPlan = plan === "starter" ? "growth" : plan === "growth" ? "elite" : null;
     const renewalDate = data?.current_period_end
         ? new Date(data.current_period_end).toLocaleDateString("en-US", {
             year: "numeric", month: "long", day: "numeric",
@@ -297,7 +435,12 @@ export default function BillingPage() {
                 </Card>
             )}
 
-            {/* 3. Manage Billing */}
+            {/* 3. Plan Comparison */}
+            {data && !loading && (
+                <PlanComparisonTable currentPlan={plan} nextPlan={nextPlan} />
+            )}
+
+            {/* 4. Manage Billing */}
             {data && !loading && (
                 <Card>
                     <CardHeader>

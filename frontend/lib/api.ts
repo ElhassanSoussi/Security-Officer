@@ -168,6 +168,12 @@ export class ApiClient {
                 window.dispatchEvent(new CustomEvent("plan:limit_reached", { detail: planLimitDetail }));
             }
 
+            // Handle 403 plan_limit_exceeded — fire upgrade modal event
+            if (res.status === 403 && code === "plan_limit_exceeded" && typeof window !== "undefined") {
+                const limitDetail = rawDetail && typeof rawDetail === "object" ? rawDetail : { error: "plan_limit_exceeded" };
+                window.dispatchEvent(new CustomEvent("plan:limit_exceeded", { detail: limitDetail }));
+            }
+
             // Handle subscription inactive — fire global event for blocking modal
             if (res.status === 402 && code === "SUBSCRIPTION_INACTIVE" && typeof window !== "undefined") {
                 const subDetail = rawDetail && typeof rawDetail === "object" ? rawDetail : { error: "SUBSCRIPTION_INACTIVE" };
@@ -364,7 +370,13 @@ export class ApiClient {
         });
 
         if (!res.ok) {
-            throw new Error(`Upload Failed: ${res.statusText}`);
+            let detail: any = null;
+            try { detail = await res.json(); } catch { /* ignore */ }
+            // Fire upgrade modal on plan limit
+            if (res.status === 403 && detail?.detail?.error === "plan_limit_exceeded" && typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("plan:limit_exceeded", { detail: detail.detail }));
+            }
+            throw new Error(`Upload Failed: ${detail?.detail?.message || detail?.message || res.statusText}`);
         }
         return res.json();
     }
@@ -410,10 +422,15 @@ export class ApiClient {
 
         if (!res.ok) {
             let detail = res.statusText;
+            let parsed: any = null;
             try {
-                const err = await res.json();
-                detail = err?.detail || detail;
+                parsed = await res.json();
+                detail = parsed?.detail?.message || parsed?.detail || detail;
             } catch { /* ignore */ }
+            // Fire upgrade modal on plan limit
+            if (res.status === 403 && parsed?.detail?.error === "plan_limit_exceeded" && typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("plan:limit_exceeded", { detail: parsed.detail }));
+            }
             throw new Error(`Upload Failed: ${detail}`);
         }
         return res.json();

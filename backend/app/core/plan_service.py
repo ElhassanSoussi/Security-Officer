@@ -62,6 +62,19 @@ PLAN_LIMITS: Dict[Plan, Dict[str, int]] = {
     },
 }
 
+# ─── Next-Tier Ladder ────────────────────────────────────────────────────────
+
+PLAN_NEXT_TIER: Dict[Plan, Optional[Plan]] = {
+    Plan.STARTER: Plan.GROWTH,
+    Plan.GROWTH:  Plan.ELITE,
+    Plan.ELITE:   None,
+}
+
+
+def get_next_tier(plan: Plan) -> Optional[Plan]:
+    """Return the next upgrade tier, or None if already at the top."""
+    return PLAN_NEXT_TIER.get(plan)
+
 
 # ─── Stripe Price ID → Plan Mapping ──────────────────────────────────────────
 
@@ -153,15 +166,21 @@ def _current_month_start() -> str:
 
 def _raise_limit_exceeded(resource: str, current: int, limit: int, plan: Plan) -> None:
     """Raise a structured HTTP 403 when a plan limit is exceeded."""
+    next_plan = get_next_tier(plan)
     raise HTTPException(
         status_code=403,
         detail={
             "error": "plan_limit_exceeded",
             "message": "Upgrade required to continue",
             "resource": resource,
-            "current_count": current,
+            # Canonical fields (new)
+            "current_plan": plan.value,
+            "used": current,
             "limit": limit,
+            "next_plan": next_plan.value if next_plan else None,
+            # Legacy aliases — kept for backward compat
             "plan": plan.value,
+            "current_count": current,
         },
     )
 
@@ -177,6 +196,11 @@ class PlanService:
     def get_limits(plan: Plan) -> Dict[str, int]:
         """Return the feature-limit dict for a plan."""
         return dict(PLAN_LIMITS.get(plan, PLAN_LIMITS[Plan.STARTER]))
+
+    @staticmethod
+    def get_next_tier(plan: Plan) -> Optional[Plan]:
+        """Return the next upgrade tier above *plan*, or None if already at Elite."""
+        return get_next_tier(plan)
 
     @staticmethod
     def get_org_plan(org_id: str) -> Plan:

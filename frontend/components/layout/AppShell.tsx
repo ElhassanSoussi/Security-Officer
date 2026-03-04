@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { BillingPastDueBanner } from "@/components/BillingPastDueBanner";
 import { DemoBanner } from "@/components/DemoBanner";
 import { TrialBanner } from "@/components/TrialBanner";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 type AppShellProps = {
     children: React.ReactNode;
@@ -41,6 +42,7 @@ export function AppShell({ children }: AppShellProps) {
                 <DemoBanner />
                 <BillingPastDueBanner />
                 <TrialBanner />
+                <UpgradeModal />
                 <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
                     <div className="page-container">
                         <ErrorBoundary>{children}</ErrorBoundary>
