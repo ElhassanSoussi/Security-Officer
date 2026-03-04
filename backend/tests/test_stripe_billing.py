@@ -428,7 +428,7 @@ def test_34_active_statuses_contains_expected_values():
 
 def test_35_config_has_stripe_price_free():
     from app.core.config import Settings
-    assert hasattr(Settings, "__fields__") or hasattr(Settings.model_fields, "__class__")
+    assert hasattr(Settings, "model_fields")
     s = Settings()
     assert hasattr(s, "STRIPE_PRICE_FREE")
 

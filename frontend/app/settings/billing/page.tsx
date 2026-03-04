@@ -9,7 +9,7 @@
  *   3. Manage Billing      (Stripe portal redirect)
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -94,6 +94,14 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
     const atLimit = !isUnlimited && limit > 0 && used >= limit;
     const nearLimit = !isUnlimited && limit > 0 && pct >= 85;
     const barColor = atLimit ? "bg-red-500" : nearLimit ? "bg-amber-400" : "bg-primary";
+    const barRef = useRef<HTMLDivElement>(null);
+
+    // Set width imperatively to avoid inline style JSX prop
+    useEffect(() => {
+        if (barRef.current) {
+            barRef.current.style.width = isUnlimited ? "2%" : `${Math.max(pct, 2)}%`;
+        }
+    }, [isUnlimited, pct]);
 
     return (
         <div className="space-y-1.5">
@@ -110,8 +118,8 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
+                    ref={barRef}
                     className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                    style={{ width: isUnlimited ? "2%" : `${Math.max(pct, 2)}%` }}
                 />
             </div>
             {atLimit && (

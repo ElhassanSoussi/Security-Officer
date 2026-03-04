@@ -16,7 +16,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 from app.core.auth import get_current_user, require_user_id
 from app.core.config import get_settings
@@ -41,14 +41,16 @@ class ContactFormPayload(BaseModel):
     company_size: Optional[str] = None
     message: Optional[str] = None
 
-    @validator("email")
+    @field_validator("email")
+    @classmethod
     def validate_email(cls, v):
         pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         if not re.match(pattern, v):
             raise ValueError("Invalid email address")
         return v.lower().strip()
 
-    @validator("company_name", "name")
+    @field_validator("company_name", "name")
+    @classmethod
     def not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("Field cannot be empty")
@@ -64,7 +66,8 @@ class TrialEventPayload(BaseModel):
     org_id: str
     event_type: str  # TRIAL_STARTED, TRIAL_CONVERTED, TRIAL_EXPIRED
 
-    @validator("event_type")
+    @field_validator("event_type")
+    @classmethod
     def valid_event(cls, v):
         allowed = {"TRIAL_STARTED", "TRIAL_CONVERTED", "TRIAL_EXPIRED"}
         if v not in allowed:

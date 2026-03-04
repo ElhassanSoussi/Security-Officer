@@ -161,7 +161,7 @@ export default function AssistantPage() {
                     oid = orgs?.[0]?.id ?? null;
                 }
                 setOrgId(oid);
-            } catch (e: any) {
+            } catch {
                 setInitError("Could not load your account. Please refresh.");
             }
         })();

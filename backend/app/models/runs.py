@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -46,10 +46,9 @@ class RunUpdate(BaseModel):
 
 
 class Run(RunBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_locked: Optional[bool] = False  # Phase 17
-
-    class Config:
-        from_attributes = True
