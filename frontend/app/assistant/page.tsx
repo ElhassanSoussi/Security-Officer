@@ -3,12 +3,11 @@
 /*
  * Assistant — /assistant
  *
- * In-app AI assistant that answers platform-guidance questions only.
+ * In-app AI assistant — platform guidance only.
  * No document content access. No legal advice or attestation.
  */
 
 import { useState, useRef, useEffect, useCallback, FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     MessageSquare,
@@ -17,6 +16,8 @@ import {
     AlertTriangle,
     ArrowRight,
     RotateCcw,
+    Copy,
+    Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,16 @@ interface Message {
     error?: boolean;
 }
 
+// ── Help topic shortcuts ───────────────────────────────────────────────────────
+
+const HELP_TOPICS: { label: string; prompt: string }[] = [
+    { label: "Getting Started",  prompt: "How do I get started with the platform?" },
+    { label: "Documents",        prompt: "How do I upload and manage documents?" },
+    { label: "Runs",             prompt: "How do I start a questionnaire run?" },
+    { label: "Review & Audit",   prompt: "Where do I find my audit log?" },
+    { label: "Plans & Billing",  prompt: "What's my current plan and usage?" },
+];
+
 // ── Suggested prompts ────────────────────────────────────────────────────────
 
 const SUGGESTED_PROMPTS = [
@@ -47,7 +58,7 @@ const SUGGESTED_PROMPTS = [
     "How do I start a new compliance run?",
     "How do I add documents to a project?",
     "Where do I find my audit log?",
-    "How do I invite a team member?",
+    "Why am I blocked from uploading?",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,10 +67,40 @@ function uid() {
     return Math.random().toString(36).slice(2, 10);
 }
 
-function AssistantBubble({ msg }: { msg: Message }) {
-    const isUser = msg.role === "user";
+function CopyButton({ text }: { text: string }) {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch { /* clipboard unavailable */ }
+    };
+    return (
+        <button
+            onClick={handleCopy}
+            className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Copy answer"
+            aria-label="Copy answer"
+        >
+            {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? "Copied" : "Copy"}
+        </button>
+    );
+}
 
-    if (isUser) {
+function renderMarkdown(text: string): React.ReactNode[] {
+    return text.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+        p.startsWith("**") && p.endsWith("**")
+            ? <strong key={i}>{p.slice(2, -2)}</strong>
+            : <span key={i}>{p}</span>,
+    );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+function AssistantBubble({ msg }: { msg: Message }) {
+    if (msg.role === "user") {
         return (
             <div className="flex justify-end">
                 <div className="max-w-[75%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground shadow-sm">
@@ -68,52 +109,31 @@ function AssistantBubble({ msg }: { msg: Message }) {
             </div>
         );
     }
-
-    // Parse very basic markdown bold (**text**) for the assistant reply.
-    function renderMarkdown(text: string) {
-        const parts = text.split(/(\*\*[^*]+\*\*)/g);
-        return parts.map((p, i) =>
-            p.startsWith("**") && p.endsWith("**") ? (
-                <strong key={i}>{p.slice(2, -2)}</strong>
-            ) : (
-                <span key={i}>{p}</span>
-            ),
-        );
-    }
-
     return (
         <div className="flex justify-start">
-            <div className="max-w-[82%] space-y-2.5">
-                <div
-                    className={`rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm shadow-sm leading-relaxed whitespace-pre-wrap ${
-                        msg.error
-                            ? "border border-red-200 bg-red-50 text-red-800"
-                            : "border border-border bg-card text-foreground"
-                    }`}
-                >
+            <div className="max-w-[82%] space-y-2">
+                <div className={`rounded-2xl rounded-tl-sm px-4 py-3 text-sm shadow-sm leading-relaxed whitespace-pre-wrap ${
+                    msg.error
+                        ? "border border-red-200 bg-red-50 text-red-800"
+                        : "border border-border bg-card text-foreground"
+                }`}>
                     {renderMarkdown(msg.content)}
                 </div>
-                {msg.actions && msg.actions.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pl-1">
-                        {msg.actions.map((a) => (
-                            <Link key={a.href} href={a.href}>
-                                <Badge
-                                    variant="outline"
-                                    className="gap-1 cursor-pointer text-xs hover:bg-accent transition-colors"
-                                >
-                                    <ArrowRight className="h-3 w-3" />
-                                    {a.label}
-                                </Badge>
-                            </Link>
-                        ))}
-                    </div>
-                )}
+                <div className="flex flex-wrap items-center gap-2 pl-1">
+                    {msg.actions?.map((a) => (
+                        <Link key={a.href} href={a.href}>
+                            <Badge variant="outline" className="gap-1 cursor-pointer text-xs hover:bg-accent transition-colors">
+                                <ArrowRight className="h-3 w-3" />
+                                {a.label}
+                            </Badge>
+                        </Link>
+                    ))}
+                    {!msg.error && <CopyButton text={msg.content} />}
+                </div>
             </div>
         </div>
     );
 }
-
-// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AssistantPage() {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -233,6 +253,20 @@ export default function AssistantPage() {
                         New conversation
                     </Button>
                 )}
+            </div>
+
+            {/* Help topics bar */}
+            <div className="flex flex-wrap gap-1.5 py-3 border-b border-border shrink-0">
+                {HELP_TOPICS.map((t) => (
+                    <button
+                        key={t.label}
+                        onClick={() => sendMessage(t.prompt)}
+                        disabled={loading || !!initError}
+                        className="rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {t.label}
+                    </button>
+                ))}
             </div>
 
             {/* Init error */}
