@@ -254,6 +254,15 @@ class PlanService:
             count = res.count if res.count is not None else 0
 
             if count >= max_runs:
+                try:
+                    from app.core.upgrade_events import log_upgrade_event
+                    log_upgrade_event(
+                        "limit_hit", org_id,
+                        metadata={"resource": "runs", "current_plan": plan.value,
+                                  "used": count, "limit": max_runs},
+                    )
+                except Exception:
+                    pass
                 _raise_limit_exceeded("runs", count, max_runs, plan)
         except HTTPException:
             raise
@@ -281,6 +290,15 @@ class PlanService:
             count = res.count if res.count is not None else 0
 
             if count >= max_docs:
+                try:
+                    from app.core.upgrade_events import log_upgrade_event
+                    log_upgrade_event(
+                        "limit_hit", org_id,
+                        metadata={"resource": "documents", "current_plan": plan.value,
+                                  "used": count, "limit": max_docs},
+                    )
+                except Exception:
+                    pass
                 _raise_limit_exceeded("documents", count, max_docs, plan)
         except HTTPException:
             raise
@@ -307,6 +325,15 @@ class PlanService:
             count = res.count if res.count is not None else 0
 
             if count >= max_projects:
+                try:
+                    from app.core.upgrade_events import log_upgrade_event
+                    log_upgrade_event(
+                        "limit_hit", org_id,
+                        metadata={"resource": "projects", "current_plan": plan.value,
+                                  "used": count, "limit": max_projects},
+                    )
+                except Exception:
+                    pass
                 _raise_limit_exceeded("projects", count, max_projects, plan)
         except HTTPException:
             raise

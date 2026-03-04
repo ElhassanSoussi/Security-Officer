@@ -8,7 +8,7 @@ from app.core.error_handler import APIError
 from app.core.config import get_settings
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 logger = logging.getLogger("api.billing")
@@ -167,13 +167,52 @@ async def stripe_webhook(request: Request):
     if event_type == "checkout.session.completed":
         billing_manager.handle_checkout_completed(event_data)
     elif event_type == "customer.subscription.updated":
-        billing_manager.handle_subscription_updated(event_data)
+        # Detect plan tier change before handing off to billing_manager
+        _handle_subscription_updated_with_tracking(org_id, event_data)
     elif event_type == "customer.subscription.deleted":
         billing_manager.handle_subscription_deleted(event_data)
     else:
         logger.debug("Unhandled Stripe event: %s", event_type)
 
     return {"status": "success"}
+
+
+def _handle_subscription_updated_with_tracking(org_id: Optional[str], event_data: dict) -> None:
+    """
+    Delegate to billing_manager then log plan_upgraded if the tier changed.
+    Old plan is read from DB *before* the update; new plan is derived from
+    the Stripe price ID carried in the webhook payload.
+    """
+    from app.core.plan_service import PlanService, Plan, resolve_price_id
+
+    old_plan: Optional[str] = None
+    if org_id:
+        try:
+            old_plan = PlanService.get_org_plan(org_id).value
+        except Exception:
+            pass
+
+    billing_manager.handle_subscription_updated(event_data)
+
+    if org_id:
+        try:
+            # Derive new plan from the first subscription item's price ID
+            items = event_data.get("items", {}).get("data", [])
+            new_price_id = (items[0].get("price", {}).get("id") if items else None)
+            new_plan_enum: Optional[Plan] = resolve_price_id(new_price_id) if new_price_id else None
+
+            if new_plan_enum and old_plan and new_plan_enum.value != old_plan:
+                from app.core.upgrade_events import log_upgrade_event
+                log_upgrade_event(
+                    "plan_upgraded", org_id,
+                    metadata={
+                        "previous_plan": old_plan,
+                        "new_plan": new_plan_enum.value,
+                        "stripe_price_id": new_price_id,
+                    },
+                )
+        except Exception as exc:
+            logger.debug("plan_upgraded tracking failed: %s", str(exc)[:120])
 
 
 # ── Portal ────────────────────────────────────────────────────
@@ -653,8 +692,16 @@ def create_portal_session_v2(
     base_url = settings.FRONTEND_URL.rstrip("/")
     url = billing_manager.create_portal_session(
         customer_id=res.data["stripe_customer_id"],
-        return_url=f"{base_url}/settings/billing",
+        return_url=f"{base_url}/settings/billing?stripe_return=1",
     )
+
+    # Track funnel: stripe_portal_redirected
+    try:
+        from app.core.upgrade_events import log_upgrade_event
+        log_upgrade_event("stripe_portal_redirected", org_id, user_id=user_id)
+    except Exception:
+        pass
+
     return {"url": url}
 
 
@@ -793,3 +840,71 @@ def phase_19start_trial(
         raise HTTPException(status_code=400, detail="org_id required")
 
     return _start_trial(org_id)
+
+
+# ── Upgrade Event Logging ────────────────────────────────────────────────────
+
+class LogUpgradeEventRequest(BaseModel):
+    event_type: str
+    org_id: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@router.post("/log-upgrade-event", status_code=204)
+def log_upgrade_event_endpoint(
+    body: LogUpgradeEventRequest,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Client-side upgrade-funnel event logger.
+    Accepts events: upgrade_modal_shown, upgrade_clicked, stripe_portal_returned.
+    Always returns 204 — never exposes internal errors to the caller.
+    """
+    from app.core.upgrade_events import log_upgrade_event, UPGRADE_EVENT_TYPES
+
+    user_id = require_user_id(user)
+    org_id = parse_uuid(body.org_id, "org_id", required=True)
+
+    if body.event_type not in UPGRADE_EVENT_TYPES:
+        # Silently ignore unknown types — don't leak internals.
+        return
+
+    try:
+        log_upgrade_event(
+            event_type=body.event_type,
+            org_id=org_id,
+            user_id=user_id,
+            metadata=body.metadata or {},
+        )
+    except Exception:
+        pass  # best-effort
+
+
+# ── Upgrade Analytics ────────────────────────────────────────────────────────
+
+@router.get("/upgrade-analytics", response_model=Dict[str, Any])
+def get_upgrade_analytics_endpoint(
+    org_id: str,
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    GET /billing/upgrade-analytics?org_id=...
+
+    Returns upgrade-funnel metrics for the last 30 days:
+    {
+        limit_hits, modal_shown, upgrade_clicks, conversions,
+        top_resource, resource_hits
+    }
+    """
+    from app.core.upgrade_events import get_upgrade_analytics
+
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+    if not resolved_org_id:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    return get_upgrade_analytics(resolved_org_id, days=30)

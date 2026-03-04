@@ -3,10 +3,9 @@
 /*
  * Plans & Billing — /settings/billing
  *
- * Sections:
- *   1. Current Plan Card   (plan badge, status badge, renewal, upgrade CTA)
- *   2. Usage               (progress bars for documents / projects / runs)
- *   3. Manage Billing      (Stripe portal redirect)
+ * Tabs:
+ *   Overview   — Current Plan, Usage, Plan Comparison, Manage Billing
+ *   Analytics  — Upgrade funnel: Limit Hits, Modal Opens, Clicks, Conversions + resource bar chart
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -24,6 +23,10 @@ import {
     ExternalLink,
     ArrowUpRight,
     Table2,
+    TrendingUp,
+    MousePointerClick,
+    Eye,
+    Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +35,15 @@ import { ApiClient } from "@/lib/api";
 import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
+
+interface AnalyticsData {
+    limit_hits: number;
+    modal_shown: number;
+    upgrade_clicks: number;
+    conversions: number;
+    top_resource: string | null;
+    resource_hits: Record<string, number>;
+}
 
 interface BillingSummary {
     plan: string;
@@ -128,6 +140,180 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
                     <AlertTriangle className="h-3 w-3" />
                     Limit reached — upgrade to continue
                 </p>
+            )}
+        </div>
+    );
+}
+
+// ─── Analytics Tab Components ────────────────────────────────────────────────
+
+const RESOURCE_LABELS: Record<string, string> = {
+    projects: "Projects",
+    documents: "Documents",
+    runs: "Analysis Runs",
+};
+
+function MetricCard({
+    label,
+    value,
+    icon,
+    sub,
+    accent,
+}: {
+    label: string;
+    value: number | string;
+    icon: React.ReactNode;
+    sub?: string;
+    accent?: string;
+}) {
+    return (
+        <Card>
+            <CardContent className="pt-5 pb-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{label}</p>
+                        <p className={`text-3xl font-bold tabular-nums ${accent ?? "text-foreground"}`}>{value}</p>
+                        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+                    </div>
+                    <div className="rounded-lg bg-muted p-2 shrink-0">{icon}</div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function ResourceBar({ label, count, max }: { label: string; count: number; max: number }) {
+    const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+    const barRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (barRef.current) barRef.current.style.width = `${Math.max(pct, 2)}%`;
+    }, [pct]);
+    return (
+        <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{RESOURCE_LABELS[label] ?? label}</span>
+                <span className="font-semibold tabular-nums">{count.toLocaleString()}</span>
+            </div>
+            <div className="h-3 rounded-full bg-muted overflow-hidden">
+                <div ref={barRef} className="h-full rounded-full bg-primary transition-all duration-500" />
+            </div>
+        </div>
+    );
+}
+
+function AnalyticsTab({ data, loading }: { data: AnalyticsData | null; loading: boolean }) {
+    const conversionRate =
+        data && data.modal_shown > 0
+            ? ((data.conversions / data.modal_shown) * 100).toFixed(1)
+            : "0.0";
+
+    const maxHits = data
+        ? Math.max(...Object.values(data.resource_hits), 1)
+        : 1;
+
+    if (loading) {
+        return (
+            <div className="space-y-4 animate-pulse">
+                <div className="grid grid-cols-2 gap-4">
+                    {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="h-28 rounded-xl bg-muted" />
+                    ))}
+                </div>
+                <div className="h-40 rounded-xl bg-muted" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Metric Cards */}
+            <div className="grid grid-cols-2 gap-4">
+                <MetricCard
+                    label="Limit Hits"
+                    value={data?.limit_hits ?? 0}
+                    icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
+                    sub="Last 30 days"
+                    accent="text-amber-600"
+                />
+                <MetricCard
+                    label="Modal Opens"
+                    value={data?.modal_shown ?? 0}
+                    icon={<Eye className="h-5 w-5 text-blue-500" />}
+                    sub="Upgrade prompts shown"
+                />
+                <MetricCard
+                    label="Upgrade Clicks"
+                    value={data?.upgrade_clicks ?? 0}
+                    icon={<MousePointerClick className="h-5 w-5 text-violet-500" />}
+                    sub="Portal redirects initiated"
+                />
+                <MetricCard
+                    label="Conversion Rate"
+                    value={`${conversionRate}%`}
+                    icon={<Award className="h-5 w-5 text-emerald-500" />}
+                    sub={`${data?.conversions ?? 0} plan upgrade${(data?.conversions ?? 0) !== 1 ? "s" : ""}`}
+                    accent={(data?.conversions ?? 0) > 0 ? "text-emerald-600" : undefined}
+                />
+            </div>
+
+            {/* Resource Hit Frequency */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        Resource Hit Frequency
+                    </CardTitle>
+                    <CardDescription>
+                        Which limits triggered the most upgrade prompts in the last 30 days.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {data && Object.keys(data.resource_hits).length > 0 ? (
+                        Object.entries(data.resource_hits)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([resource, count]) => (
+                                <ResourceBar
+                                    key={resource}
+                                    label={resource}
+                                    count={count}
+                                    max={maxHits}
+                                />
+                            ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                            <BarChart2 className="h-10 w-10 mb-3 opacity-30" />
+                            <p className="text-sm font-medium">No limit events in the last 30 days</p>
+                            <p className="text-xs mt-1">Data appears here when users hit plan limits.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Funnel Summary */}
+            {data && (data.limit_hits > 0 || data.modal_shown > 0) && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-muted-foreground" />
+                            Funnel Overview
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center gap-2 text-sm flex-wrap">
+                            {[
+                                { label: "Limit Hit", val: data.limit_hits, color: "bg-amber-100 text-amber-700 border-amber-200" },
+                                { label: "→ Modal Shown", val: data.modal_shown, color: "bg-blue-100 text-blue-700 border-blue-200" },
+                                { label: "→ Clicked Upgrade", val: data.upgrade_clicks, color: "bg-violet-100 text-violet-700 border-violet-200" },
+                                { label: "→ Converted", val: data.conversions, color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+                            ].map(({ label, val, color }) => (
+                                <div key={label} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium ${color}`}>
+                                    <span className="text-xs">{label}</span>
+                                    <span className="tabular-nums font-bold">{val}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );
@@ -274,12 +460,17 @@ function PlanComparisonTable({ currentPlan, nextPlan }: { currentPlan: string; n
 export default function BillingPage() {
     const searchParams = useSearchParams();
     const checkoutResult = searchParams.get("checkout");
+    const stripeReturn   = searchParams.get("stripe_return") === "1";
 
+    const [activeTab, setActiveTab] = useState<"overview" | "analytics">("overview");
     const [loading, setLoading] = useState(true);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [portalLoading, setPortalLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<BillingSummary | null>(null);
+    const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
     const [orgId, setOrgId] = useState<string | null>(null);
+    const [stripeReturnToast, setStripeReturnToast] = useState<"upgraded" | "unchanged" | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -293,17 +484,63 @@ export default function BillingPage() {
             setOrgId(oid);
             const summary = await ApiClient.getBillingSummary(oid, tok);
             setData(summary);
+            return { oid, tok, summary };
         } catch (e: any) {
             setError(e?.message ?? "Failed to load billing data");
+            return null;
         } finally {
             setLoading(false);
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    const loadAnalytics = useCallback(async (oid: string, tok?: string) => {
+        setAnalyticsLoading(true);
+        try {
+            const result = await ApiClient.getUpgradeAnalytics(oid, tok);
+            setAnalytics(result);
+        } catch {
+            // non-fatal
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    }, []);
 
+    // On mount: load billing; also handle Stripe portal return
+    useEffect(() => {
+        load().then(async (ctx) => {
+            if (!ctx) return;
+            const { oid, tok, summary } = ctx;
+
+            // Always pre-load analytics in background
+            loadAnalytics(oid, tok);
+
+            if (stripeReturn) {
+                // Log stripe_portal_returned
+                try {
+                    await ApiClient.logUpgradeEvent("stripe_portal_returned", oid, tok, {
+                        plan: summary.plan,
+                    });
+                } catch { /* best-effort */ }
+
+                // Detect plan change: if plan is no longer starter show "upgraded" toast
+                const prevPlan = sessionStorage.getItem("nyccompliance:billing:plan_before_portal");
+                if (prevPlan && prevPlan !== summary.plan) {
+                    setStripeReturnToast("upgraded");
+                } else {
+                    setStripeReturnToast("unchanged");
+                }
+                sessionStorage.removeItem("nyccompliance:billing:plan_before_portal");
+            }
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // When the user clicks Manage Billing, save current plan before redirect
     const handleManageBilling = async () => {
         if (!orgId) return;
+        if (data?.plan) {
+            try { sessionStorage.setItem("nyccompliance:billing:plan_before_portal", data.plan); } catch { /* ignore */ }
+        }
         setPortalLoading(true);
         try {
             const result = await ApiClient.createPortalSessionV2(orgId);
@@ -312,6 +549,16 @@ export default function BillingPage() {
             setError(e?.message ?? "Could not open billing portal. You may need to subscribe to a plan first.");
         } finally {
             setPortalLoading(false);
+        }
+    };
+
+    const handleTabChange = (tab: "overview" | "analytics") => {
+        setActiveTab(tab);
+        if (tab === "analytics" && orgId && !analytics) {
+            createClient().auth.getSession().then(
+                (r: { data: { session: { access_token: string } | null }}) =>
+                    loadAnalytics(orgId, r.data.session?.access_token)
+            );
         }
     };
 
@@ -326,6 +573,22 @@ export default function BillingPage() {
 
     return (
         <div className="max-w-3xl space-y-6">
+            {/* Stripe return toasts */}
+            {stripeReturnToast === "upgraded" && (
+                <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    Plan upgraded successfully. Your new limits are now active.
+                    <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setStripeReturnToast(null)}>✕</Button>
+                </div>
+            )}
+            {stripeReturnToast === "unchanged" && (
+                <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <RefreshCw className="h-4 w-4 shrink-0" />
+                    You&apos;ve returned from the billing portal. No plan change detected.
+                    <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setStripeReturnToast(null)}>✕</Button>
+                </div>
+            )}
+
             {/* Checkout result banners */}
             {checkoutResult === "success" && (
                 <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -351,139 +614,169 @@ export default function BillingPage() {
                 </div>
             )}
 
-            {/* 1. Current Plan Card */}
-            <Card>
-                <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                    <div className="space-y-1">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                            Current Plan
-                        </CardTitle>
-                        <CardDescription>Your organization&apos;s active subscription</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="gap-1 text-xs">
+            {/* Tab Bar */}
+            <div className="flex gap-1 border-b border-border pb-0">
+                {(["overview", "analytics"] as const).map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => handleTabChange(tab)}
+                        className={`
+                            px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors capitalize
+                            ${activeTab === tab
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"}
+                        `}
+                    >
+                        {tab === "analytics" ? "Analytics" : "Overview"}
+                    </button>
+                ))}
+                <div className="ml-auto flex items-center pb-1">
+                    <Button variant="ghost" size="sm" onClick={() => load()} disabled={loading} className="gap-1 text-xs">
                         <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                         Refresh
                     </Button>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="space-y-3 animate-pulse">
-                            <div className="h-5 w-28 rounded bg-muted" />
-                            <div className="h-4 w-44 rounded bg-muted" />
-                        </div>
-                    ) : data ? (
-                        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+                </div>
+            </div>
+
+            {/* ── Overview Tab ─────────────────────────────────────────── */}
+            {activeTab === "overview" && (
+                <>
+                    {/* 1. Current Plan Card */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-start justify-between space-y-0">
                             <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Plan</p>
-                                <PlanBadge plan={data.plan} />
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                                    Current Plan
+                                </CardTitle>
+                                <CardDescription>Your organization&apos;s active subscription</CardDescription>
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Status</p>
-                                <StatusBadge status={data.subscription_status} />
-                            </div>
-                            {renewalDate && (
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Renews</p>
-                                    <p className="text-sm font-medium text-foreground">{renewalDate}</p>
+                        </CardHeader>
+                        <CardContent>
+                            {loading ? (
+                                <div className="space-y-3 animate-pulse">
+                                    <div className="h-5 w-28 rounded bg-muted" />
+                                    <div className="h-4 w-44 rounded bg-muted" />
                                 </div>
-                            )}
-                            {!isElite && (
-                                <div className="ml-auto">
-                                    <Button asChild size="sm" className="gap-1.5">
-                                        <Link href="/plans">
-                                            <ArrowUpRight className="h-3.5 w-3.5" />
-                                            Upgrade Plan
-                                        </Link>
+                            ) : data ? (
+                                <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Plan</p>
+                                        <PlanBadge plan={data.plan} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Status</p>
+                                        <StatusBadge status={data.subscription_status} />
+                                    </div>
+                                    {renewalDate && (
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Renews</p>
+                                            <p className="text-sm font-medium text-foreground">{renewalDate}</p>
+                                        </div>
+                                    )}
+                                    {!isElite && (
+                                        <div className="ml-auto">
+                                            <Button asChild size="sm" className="gap-1.5">
+                                                <Link href="/plans">
+                                                    <ArrowUpRight className="h-3.5 w-3.5" />
+                                                    Upgrade Plan
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
+                        </CardContent>
+                    </Card>
+
+                    {/* 2. Usage Section */}
+                    {data && !loading && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <BarChart2 className="h-4 w-4 text-muted-foreground" />
+                                    Usage
+                                </CardTitle>
+                                <CardDescription>
+                                    Resource consumption against your plan limits. Runs reset monthly.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-5">
+                                <UsageBar
+                                    label="Documents"
+                                    used={data.usage.documents_used}
+                                    limit={data.usage.documents_limit}
+                                />
+                                <UsageBar
+                                    label="Projects"
+                                    used={data.usage.projects_used}
+                                    limit={data.usage.projects_limit}
+                                />
+                                <UsageBar
+                                    label="Analysis Runs (this month)"
+                                    used={data.usage.runs_used}
+                                    limit={data.usage.runs_limit}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 3. Plan Comparison */}
+                    {data && !loading && (
+                        <PlanComparisonTable currentPlan={plan} nextPlan={nextPlan} />
+                    )}
+
+                    {/* 4. Manage Billing */}
+                    {data && !loading && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                    Manage Billing
+                                </CardTitle>
+                                <CardDescription>
+                                    Update payment method, view invoices, or cancel your subscription via the Stripe billing portal.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {data.has_stripe && data.billing_configured ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-1.5"
+                                        onClick={handleManageBilling}
+                                        disabled={portalLoading}
+                                    >
+                                        {portalLoading ? (
+                                            <>
+                                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                                Opening…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                Manage Billing
+                                            </>
+                                        )}
                                     </Button>
-                                </div>
-                            )}
-                        </div>
-                    ) : null}
-                </CardContent>
-            </Card>
-
-            {/* 2. Usage Section */}
-            {data && !loading && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <BarChart2 className="h-4 w-4 text-muted-foreground" />
-                            Usage
-                        </CardTitle>
-                        <CardDescription>
-                            Resource consumption against your plan limits. Runs reset monthly.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                        <UsageBar
-                            label="Documents"
-                            used={data.usage.documents_used}
-                            limit={data.usage.documents_limit}
-                        />
-                        <UsageBar
-                            label="Projects"
-                            used={data.usage.projects_used}
-                            limit={data.usage.projects_limit}
-                        />
-                        <UsageBar
-                            label="Analysis Runs (this month)"
-                            used={data.usage.runs_used}
-                            limit={data.usage.runs_limit}
-                        />
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* 3. Plan Comparison */}
-            {data && !loading && (
-                <PlanComparisonTable currentPlan={plan} nextPlan={nextPlan} />
-            )}
-
-            {/* 4. Manage Billing */}
-            {data && !loading && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                            Manage Billing
-                        </CardTitle>
-                        <CardDescription>
-                            Update payment method, view invoices, or cancel your subscription via the Stripe billing portal.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {data.has_stripe && data.billing_configured ? (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5"
-                                onClick={handleManageBilling}
-                                disabled={portalLoading}
-                            >
-                                {portalLoading ? (
-                                    <>
-                                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                        Opening…
-                                    </>
                                 ) : (
-                                    <>
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        Manage Billing
-                                    </>
+                                    <p className="text-sm text-muted-foreground">
+                                        No active Stripe subscription.{" "}
+                                        <Link href="/plans" className="text-primary underline underline-offset-2 hover:text-primary/80">
+                                            Subscribe to a plan
+                                        </Link>{" "}
+                                        to enable billing management.
+                                    </p>
                                 )}
-                            </Button>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">
-                                No active Stripe subscription.{" "}
-                                <Link href="/plans" className="text-primary underline underline-offset-2 hover:text-primary/80">
-                                    Subscribe to a plan
-                                </Link>{" "}
-                                to enable billing management.
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
+                            </CardContent>
+                        </Card>
+                    )}
+                </>
+            )}
+
+            {/* ── Analytics Tab ─────────────────────────────────────────── */}
+            {activeTab === "analytics" && (
+                <AnalyticsTab data={analytics} loading={analyticsLoading} />
             )}
         </div>
     );

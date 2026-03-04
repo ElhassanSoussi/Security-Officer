@@ -97,19 +97,47 @@ export function UpgradeModal() {
     const [loading, setLoading] = useState(false);
     const [detail, setDetail]   = useState<PlanLimitExceededDetail>({});
 
+    /** Best-effort funnel logger — never throws */
+    const logEvent = useCallback(async (
+        eventType: string,
+        eventDetail: PlanLimitExceededDetail = {},
+    ) => {
+        try {
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            const tok = session?.access_token;
+            const org = await ApiClient.getCurrentOrg(tok);
+            if (org?.id) {
+                await ApiClient.logUpgradeEvent(eventType, org.id, tok, {
+                    resource:      eventDetail.resource,
+                    current_plan:  eventDetail.current_plan ?? eventDetail.plan,
+                    used:          eventDetail.used ?? eventDetail.current_count,
+                    limit:         eventDetail.limit,
+                    next_plan:     eventDetail.next_plan,
+                } as Record<string, unknown>);
+            }
+        } catch {
+            // best-effort
+        }
+    }, []);
+
     useEffect(() => {
         const handler = (e: Event) => {
             const custom = e as CustomEvent<PlanLimitExceededDetail>;
             setDetail(custom.detail ?? {});
             setOpen(true);
             setLoading(false);
+            // Track: modal shown
+            logEvent("upgrade_modal_shown", custom.detail ?? {});
         };
         window.addEventListener("plan:limit_exceeded", handler);
         return () => window.removeEventListener("plan:limit_exceeded", handler);
-    }, []);
+    }, [logEvent]);
 
     const handleUpgrade = useCallback(async () => {
         setLoading(true);
+        // Track: upgrade clicked
+        logEvent("upgrade_clicked", detail);
         try {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
@@ -127,7 +155,7 @@ export function UpgradeModal() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [detail, logEvent]);
 
     const currentPlan  = (detail.current_plan ?? detail.plan ?? "starter").toLowerCase();
     const nextPlan     = (detail.next_plan ?? "").toLowerCase() || null;

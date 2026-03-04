@@ -1092,4 +1092,47 @@ export class ApiClient {
         a.remove();
         URL.revokeObjectURL(url);
     }
+
+    // ── Upgrade Analytics ─────────────────────────────────────────────────────
+
+    /**
+     * Best-effort: log an upgrade-funnel event to the backend.
+     * Never throws — fire-and-forget.
+     */
+    static async logUpgradeEvent(
+        eventType: string,
+        orgId: string,
+        token?: string,
+        metadata?: Record<string, unknown>,
+    ): Promise<void> {
+        try {
+            await this.post(
+                "/billing/log-upgrade-event",
+                { event_type: eventType, org_id: orgId, metadata: metadata ?? {} },
+                token,
+            );
+        } catch {
+            // best-effort — never propagate
+        }
+    }
+
+    static async getUpgradeAnalytics(
+        orgId: string,
+        token?: string,
+    ): Promise<{
+        limit_hits: number;
+        modal_shown: number;
+        upgrade_clicks: number;
+        conversions: number;
+        top_resource: string | null;
+        resource_hits: Record<string, number>;
+    }> {
+        const params = new URLSearchParams({ org_id: orgId });
+        try {
+            return await this.fetch(`/billing/upgrade-analytics?${params}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return { limit_hits: 0, modal_shown: 0, upgrade_clicks: 0, conversions: 0, top_resource: null, resource_hits: {} };
+        }
+    }
 }
