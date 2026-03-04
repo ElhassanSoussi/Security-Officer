@@ -6,7 +6,7 @@ import logging
 
 from app.core.auth import get_current_user, require_user_id
 from app.core.database import get_supabase, get_supabase_admin
-from app.core.audit_events import log_audit_event
+from app.core.audit_events import log_audit_event, log_activity_event
 from app.core.org_context import parse_uuid, resolve_org_id_for_user
 from app.core.rbac import get_user_role, role_has_permission, Permission
 from app.core.expiration import summarize_expirations
@@ -229,6 +229,15 @@ def create_project(
         user_id=user_id,
         event_type="project_created",
         metadata={"project_id": row["id"], "name": row.get("name")},
+    )
+    log_activity_event(
+        sb,
+        org_id=org_id,
+        user_id=user_id,
+        action_type="project_created",
+        entity_type="project",
+        entity_id=row["id"],
+        metadata={"name": row.get("name")},
     )
 
     return _project_row_to_dict(row)

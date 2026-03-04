@@ -990,4 +990,89 @@ export class ApiClient {
             token,
         );
     }
+
+    // ── Audit / Activity Timeline ──────────────────────────────────────────
+
+    static async getAuditEvents(
+        orgId: string,
+        params: {
+            user_id?: string;
+            action_type?: string;
+            project_id?: string;
+            from?: string;
+            to?: string;
+            page?: number;
+            page_size?: number;
+        } = {},
+        token?: string,
+    ): Promise<{
+        events: {
+            id: string;
+            timestamp: string;
+            user_id: string;
+            user_email: string | null;
+            action_type: string;
+            entity_type: string;
+            entity_id: string;
+            metadata: Record<string, unknown>;
+        }[];
+        total: number;
+        page: number;
+        page_size: number;
+    }> {
+        const qs = new URLSearchParams({ org_id: orgId });
+        if (params.user_id)    qs.set("user_id", params.user_id);
+        if (params.action_type) qs.set("action_type", params.action_type);
+        if (params.project_id) qs.set("project_id", params.project_id);
+        if (params.from)       qs.set("from", params.from);
+        if (params.to)         qs.set("to", params.to);
+        if (params.page)       qs.set("page", String(params.page));
+        if (params.page_size)  qs.set("page_size", String(params.page_size));
+        return this.fetch(`/audit/events?${qs.toString()}`, {}, token);
+    }
+
+    static async exportAuditCsv(
+        orgId: string,
+        params: {
+            user_id?: string;
+            action_type?: string;
+            project_id?: string;
+            from?: string;
+            to?: string;
+        } = {},
+        token?: string,
+    ): Promise<void> {
+        const qs = new URLSearchParams({ org_id: orgId });
+        if (params.user_id)    qs.set("user_id", params.user_id);
+        if (params.action_type) qs.set("action_type", params.action_type);
+        if (params.project_id) qs.set("project_id", params.project_id);
+        if (params.from)       qs.set("from", params.from);
+        if (params.to)         qs.set("to", params.to);
+
+        const headers: HeadersInit = {};
+        let authToken = token;
+        if (!authToken) {
+            try {
+                const supabase = createClient();
+                const { data: { session } } = await supabase.auth.getSession();
+                authToken = session?.access_token || undefined;
+            } catch { authToken = undefined; }
+        }
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+        const res = await fetch(`${API_BASE}/audit/export?${qs.toString()}`, { headers });
+        if (!res.ok) throw new Error(`Export failed: ${res.statusText}`);
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const cd = res.headers.get("Content-Disposition") || "";
+        const match = cd.match(/filename="([^"]+)"/);
+        a.download = match ? match[1] : "audit_events.csv";
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
 }

@@ -13,6 +13,7 @@ import {
     LogOut,
     BrainCircuit,
     MessageSquare,
+    ClipboardList,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
@@ -30,15 +31,16 @@ export function Sidebar() {
         { href: "/dashboard",  label: "Dashboard",          icon: LayoutDashboard },
         { href: "/projects",   label: "Projects",           icon: FolderKanban },
         { href: "/run",        label: "Run Questionnaire",  icon: PlayCircle },
-        { href: "/audit",      label: "Audit Log",          icon: FileSearch },
+        { href: "/audit",      label: "Audit Review",       icon: FileSearch },
+        { href: "/activity",   label: "Activity Log",       icon: ClipboardList },
         { href: "/intelligence", label: "Intelligence",     icon: BrainCircuit },
         { href: "/assistant",  label: "Assistant",          icon: MessageSquare },
         { href: "/plans",      label: "Plans & Billing",    icon: CreditCard },
         { href: "/settings",   label: "Settings",           icon: Settings },
     ];
     // split into groups for visual separation
-    const primaryLinks = links.slice(0, 6);
-    const secondaryLinks = links.slice(6);
+    const primaryLinks = links.slice(0, 7);
+    const secondaryLinks = links.slice(7);
 
     useEffect(() => {
         async function loadBillingBadge() {

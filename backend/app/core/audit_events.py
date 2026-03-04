@@ -9,6 +9,29 @@ _missing_activity_table_warned = False
 # The audit_events table should have no UPDATE or DELETE policies.
 AUDIT_IMMUTABLE = True
 
+# Keys containing these substrings are stripped from metadata before storage/return.
+_SENSITIVE_KEY_FRAGMENTS = (
+    "password", "token", "secret", "api_key", "apikey",
+    "credential", "private_key", "privatekey", "access_key",
+    "auth", "bearer", "jwt",
+)
+
+
+def sanitize_metadata(metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Strip any metadata keys that look like secrets.
+    Safe to call on None (returns {}).
+    """
+    if not metadata:
+        return {}
+    cleaned: Dict[str, Any] = {}
+    for k, v in metadata.items():
+        lower_k = str(k).lower()
+        if any(frag in lower_k for frag in _SENSITIVE_KEY_FRAGMENTS):
+            continue
+        cleaned[k] = v
+    return cleaned
+
 
 def log_audit_event(
     supabase,
@@ -34,7 +57,7 @@ def log_audit_event(
         "org_id": org_id,
         "user_id": user_id,
         "event_type": event_type,
-        "metadata": metadata or {},
+        "metadata": sanitize_metadata(metadata) or {},
     }
 
     try:
@@ -78,7 +101,7 @@ def log_activity_event(
         "action_type": action_type,
         "entity_type": entity_type or "",
         "entity_id": entity_id or "",
-        "metadata": metadata or {},
+        "metadata": sanitize_metadata(metadata) or {},
     }
 
     try:

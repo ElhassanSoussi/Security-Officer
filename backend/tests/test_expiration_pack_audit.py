@@ -557,32 +557,35 @@ class TestAuditEventsNormalization:
 class TestAuditEndpointPagination:
     """Verify pagination parameters are accepted on the route."""
 
-    def test_events_route_accepts_limit_offset(self):
-        """The /events endpoint function signature includes limit and offset."""
+    def test_events_route_accepts_page_page_size(self):
+        """The /events endpoint function signature includes page and page_size (replaces limit/offset)."""
         from app.api.endpoints.audit import get_audit_events
         import inspect
         sig = inspect.signature(get_audit_events)
         params = list(sig.parameters.keys())
-        assert "limit" in params
-        assert "offset" in params
+        assert "page" in params
+        assert "page_size" in params
 
-    def test_events_route_accepts_event_type(self):
+    def test_events_route_accepts_action_type(self):
+        """The /events endpoint uses action_type (replaces event_type)."""
         from app.api.endpoints.audit import get_audit_events
         import inspect
         sig = inspect.signature(get_audit_events)
-        assert "event_type" in sig.parameters
+        assert "action_type" in sig.parameters
 
-    def test_events_route_accepts_date_from(self):
+    def test_events_route_accepts_start_date(self):
+        """The /events endpoint uses start_date (replaces date_from)."""
         from app.api.endpoints.audit import get_audit_events
         import inspect
         sig = inspect.signature(get_audit_events)
-        assert "date_from" in sig.parameters
+        assert "start_date" in sig.parameters
 
-    def test_events_route_accepts_date_to(self):
+    def test_events_route_accepts_end_date(self):
+        """The /events endpoint uses end_date (replaces date_to)."""
         from app.api.endpoints.audit import get_audit_events
         import inspect
         sig = inspect.signature(get_audit_events)
-        assert "date_to" in sig.parameters
+        assert "end_date" in sig.parameters
 
     def test_events_route_accepts_org_id(self):
         from app.api.endpoints.audit import get_audit_events

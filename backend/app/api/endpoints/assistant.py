@@ -23,6 +23,7 @@ from app.core.auth import get_current_user, require_user_id
 from app.core.database import get_supabase
 from app.core.org_context import resolve_org_id_for_user
 from app.core.assistant_kb import classify_intent, pick_kb_topics, get_kb
+from app.core.audit_events import log_audit_event
 
 logger = logging.getLogger("api.assistant")
 router = APIRouter()
@@ -186,7 +187,8 @@ _KB_TOPIC_ROUTES: Dict[str, tuple] = {
     "documents":       ("Documents", "/projects"),
     "projects":        ("Projects", "/projects"),
     "runs":            ("Runs", "/runs"),
-    "audit_review":    ("Audit Log", "/audit"),
+    "audit_review":    ("Audit Review", "/audit"),
+    "activity_log":    ("Activity Log", "/activity"),
     "exports":         ("Runs & Exports", "/runs"),
     "plans_billing":   ("Plans & Billing", "/settings/billing"),
     "troubleshooting": ("Plans & Billing", "/settings/billing"),
@@ -436,6 +438,20 @@ async def send_message(
         message=body.message, intent=intent, kb_topics=kb_topics,
         tool_calls_used=tool_calls_used, reply=reply,
     )
+
+    # Audit trail — intent only, never message text
+    log_audit_event(
+        sb,
+        org_id=org_id,
+        user_id=user_id,
+        event_type="assistant_interaction",
+        metadata={
+            "intent": intent,
+            "kb_topics": kb_topics,
+            "conversation_id": conversation_id,
+        },
+    )
+
     return AssistantMessageResponse(
         conversation_id=conversation_id, reply=reply, actions=actions, intent=intent,
     )

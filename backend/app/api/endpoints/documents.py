@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 from app.core.auth import get_current_user, require_user_id
 from app.core.database import get_supabase, get_supabase_admin
-from app.core.audit_events import log_audit_event
+from app.core.audit_events import log_audit_event, log_activity_event
 from app.core.org_context import parse_uuid, resolve_org_id_for_user
 from app.core.ingestion import pdf_processor
 from app.core.rbac import get_user_role, role_has_permission, Permission
@@ -240,6 +240,17 @@ async def upload_project_document(
         },
     )
 
+    # Activity timeline
+    log_activity_event(
+        sb,
+        org_id=org_id,
+        user_id=user_id,
+        action_type="document_uploaded",
+        entity_type="document",
+        entity_id=document_id,
+        metadata={"project_id": project_id, "filename": filename},
+    )
+
     # Activity feed
     try:
         sb.table("activities").insert({
@@ -327,6 +338,15 @@ def delete_project_document(
         user_id=user_id,
         event_type="document_deleted",
         metadata={"project_id": project_id, "document_id": document_id},
+    )
+    log_activity_event(
+        sb,
+        org_id=org_id,
+        user_id=user_id,
+        action_type="document_deleted",
+        entity_type="document",
+        entity_id=document_id,
+        metadata={"project_id": project_id},
     )
 
     return {"status": "deleted", "document_id": document_id}
@@ -542,6 +562,15 @@ def build_compliance_pack(
             "document_ids": doc_ids,
             "document_count": len(found_docs),
         },
+    )
+    log_activity_event(
+        sb,
+        org_id=org_id,
+        user_id=user_id,
+        action_type="compliance_pack_created",
+        entity_type="compliance_pack",
+        entity_id=pack_id,
+        metadata={"project_id": project_id, "document_count": len(found_docs)},
     )
 
     # Return zip as streaming response

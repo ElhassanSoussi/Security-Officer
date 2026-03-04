@@ -1,19 +1,25 @@
 """
-Audit Log API — Phase 5 Part 4: Hardened.
+Audit Log API — Activity Timeline + Compliance Review.
 
 Endpoints:
-  GET /audit/log     → paginated run_audits with filters
+  GET /audit/log     → paginated run_audits with filters (compliance review)
   GET /audit/exports → export events (who exported what, when)
-  GET /audit/events  → paginated audit_events with event_type + date range filters
+  GET /audit/events  → paginated activity timeline with rich filters
+  GET /audit/export  → CSV download of filtered activity events
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Optional
+from typing import Any, Dict, List, Optional
+import csv
+import io
+import json
 import logging
 
 from app.core.auth import get_current_user, require_user_id
 from app.core.database import get_supabase
 from app.core.org_context import parse_uuid, resolve_org_id_for_user
+from app.core.audit_events import sanitize_metadata
 
 router = APIRouter()
 security = HTTPBearer()
@@ -205,22 +211,18 @@ def get_export_events(
     }
 
 
-# ── Phase 5 Part 4: Hardened Audit Events Endpoint ──────────────────────────
+# ── Shared helpers ───────────────────────────────────────────────────────────
 
 def _validate_iso_date(value: Optional[str], field_name: str) -> Optional[str]:
     """Validate an ISO date string (YYYY-MM-DD). Returns None if empty/None."""
     if not value or not str(value).strip():
         return None
-    s = str(value).strip()
-    if len(s) < 10:
-        raise HTTPException(status_code=400, detail=f"{field_name} must be ISO format YYYY-MM-DD")
-    # Accept YYYY-MM-DD prefix
-    date_part = s[:10]
     import re
+    from datetime import datetime as _dt
+    s = str(value).strip()
+    date_part = s[:10]
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_part):
         raise HTTPException(status_code=400, detail=f"{field_name} must be ISO format YYYY-MM-DD")
-    # Validate it's a real date
-    from datetime import datetime as _dt
     try:
         _dt.strptime(date_part, "%Y-%m-%d")
     except ValueError:
@@ -228,77 +230,241 @@ def _validate_iso_date(value: Optional[str], field_name: str) -> Optional[str]:
     return date_part
 
 
+# Keys whose names contain these fragments are stripped from response metadata.
+_SENSITIVE_FRAGS = ("password", "token", "secret", "api_key", "apikey",
+                    "credential", "private_key", "access_key", "auth", "bearer", "jwt")
+
+
+def _safe_meta(raw: Any) -> Dict[str, Any]:
+    """Return a sanitized copy of a metadata dict (or {} if unparseable)."""
+    if not raw:
+        return {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            return {}
+    if not isinstance(raw, dict):
+        return {}
+    return sanitize_metadata(raw)
+
+
+def _build_events_query(
+    sb,
+    org_id: str,
+    *,
+    user_id_filter: Optional[str],
+    action_type: Optional[str],
+    project_id: Optional[str],
+    validated_from: Optional[str],
+    validated_to: Optional[str],
+    limit: int,
+    offset: int,
+):
+    """Build the audit_events query with all optional filters applied."""
+    query = (
+        sb.table("audit_events")
+        .select("*", count="exact")
+        .eq("org_id", org_id)
+        .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
+    )
+    if user_id_filter and user_id_filter.strip():
+        query = query.eq("user_id", user_id_filter.strip())
+    if action_type and action_type.strip():
+        query = query.eq("event_type", action_type.strip())
+    if validated_from:
+        query = query.gte("created_at", f"{validated_from}T00:00:00")
+    if validated_to:
+        query = query.lte("created_at", f"{validated_to}T23:59:59")
+    return query
+
+
+def _normalize_event_row(row: Dict[str, Any], project_id_filter: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    Map a raw audit_events DB row to the canonical API shape.
+    Returns None if project_id_filter is set and the row doesn't match.
+    """
+    meta = _safe_meta(row.get("metadata"))
+
+    # Server-side project_id filter via metadata (client-side fallback)
+    if project_id_filter and meta.get("project_id") != project_id_filter:
+        return None
+
+    return {
+        "id": row.get("id"),
+        "timestamp": row.get("created_at"),
+        "user_id": row.get("user_id"),
+        "user_email": meta.pop("user_email", None),
+        "action_type": row.get("event_type"),
+        "entity_type": row.get("entity_type") or meta.pop("entity_type", None) or "",
+        "entity_id": row.get("entity_id") or meta.pop("entity_id", None) or "",
+        "metadata": meta,
+    }
+
+
+# ── GET /events ───────────────────────────────────────────────────────────────
+
 @router.get("/events")
 def get_audit_events(
     org_id: Optional[str] = Query(None, description="Organization UUID (required)"),
-    event_type: Optional[str] = Query(None, alias="event", description="Filter by event_type"),
-    date_from: Optional[str] = Query(None, alias="from", description="Start date YYYY-MM-DD"),
-    date_to: Optional[str] = Query(None, alias="to", description="End date YYYY-MM-DD"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    user_id: Optional[str] = Query(None, description="Filter by user UUID"),
+    action_type: Optional[str] = Query(None, description="Filter by action/event type"),
+    project_id: Optional[str] = Query(None, description="Filter by project UUID (metadata match)"),
+    start_date: Optional[str] = Query(None, alias="from", description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, alias="to", description="End date YYYY-MM-DD"),
+    page: int = Query(1, ge=1, description="1-based page number"),
+    page_size: int = Query(25, ge=1, le=200, description="Rows per page"),
     request: Request = None,
-    user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     token: HTTPAuthorizationCredentials = Depends(security),
 ):
     """
-    Paginated audit_events log with filters.
-    Phase 5 Part 4: Never returns 500 — always returns valid JSON.
-    Supports filtering by event_type and date range.
+    Paginated activity timeline from audit_events.
+    Filters: user_id, action_type, project_id, date range.
+    Response shape: {total, page, page_size, events: [...]}
+    Never returns 500 — always valid JSON.
     """
-    user_id = require_user_id(user)
+    caller_id = require_user_id(current_user)
 
     if not org_id or not str(org_id).strip():
         raise HTTPException(status_code=400, detail="org_id is required")
 
-    # Validate date params (raises 400 on bad format, never 500)
-    validated_from = _validate_iso_date(date_from, "from")
-    validated_to = _validate_iso_date(date_to, "to")
+    validated_from = _validate_iso_date(start_date, "from")
+    validated_to = _validate_iso_date(end_date, "to")
 
     try:
         sb = get_supabase(token.credentials)
     except Exception:
         logger.warning("audit_events: failed to get supabase client")
-        return {"items": [], "total": 0, "limit": limit, "offset": offset}
+        return {"events": [], "total": 0, "page": page, "page_size": page_size}
 
-    # Verify membership
     try:
-        org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+        org_id = resolve_org_id_for_user(sb, caller_id, org_id, request=request)
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=403, detail="Organization access denied")
 
-    # Build query
+    offset = (page - 1) * page_size
+
     try:
-        query = (
-            sb.table("audit_events")
-            .select("*", count="exact")
-            .eq("org_id", org_id)
-            .order("created_at", desc=True)
-            .range(offset, offset + limit - 1)
+        query = _build_events_query(
+            sb, org_id,
+            user_id_filter=user_id,
+            action_type=action_type,
+            project_id=project_id,
+            validated_from=validated_from,
+            validated_to=validated_to,
+            limit=page_size,
+            offset=offset,
         )
-
-        if event_type and event_type.strip():
-            query = query.eq("event_type", event_type.strip())
-
-        if validated_from:
-            query = query.gte("created_at", f"{validated_from}T00:00:00")
-
-        if validated_to:
-            query = query.lte("created_at", f"{validated_to}T23:59:59")
-
         res = query.execute()
-    except Exception as e:
-        # Never 500: if table missing or query fails, return empty
-        logger.warning("audit_events query failed: %s", str(e)[:200])
-        return {"items": [], "total": 0, "limit": limit, "offset": offset}
+    except Exception as exc:
+        logger.warning("audit_events query failed: %s", str(exc)[:200])
+        return {"events": [], "total": 0, "page": page, "page_size": page_size}
 
-    items = res.data or []
-    total = res.count if res.count is not None else len(items)
+    raw_rows: List[Dict[str, Any]] = res.data or []
+    total = res.count if res.count is not None else len(raw_rows)
+
+    events = []
+    for row in raw_rows:
+        normalized = _normalize_event_row(row, project_id)
+        if normalized is not None:
+            events.append(normalized)
 
     return {
-        "items": items,
+        "events": events,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "page_size": page_size,
     }
+
+
+# ── GET /export (CSV download) ────────────────────────────────────────────────
+
+@router.get("/export")
+def export_audit_csv(
+    org_id: Optional[str] = Query(None, description="Organization UUID (required)"),
+    user_id: Optional[str] = Query(None, description="Filter by user UUID"),
+    action_type: Optional[str] = Query(None, description="Filter by action/event type"),
+    project_id: Optional[str] = Query(None, description="Filter by project UUID"),
+    start_date: Optional[str] = Query(None, alias="from", description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, alias="to", description="End date YYYY-MM-DD"),
+    request: Request = None,
+    current_user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    CSV export of filtered audit_events — org-scoped, metadata sanitized.
+    Hard cap: 5 000 rows. Content-Disposition triggers browser download.
+    """
+    caller_id = require_user_id(current_user)
+
+    if not org_id or not str(org_id).strip():
+        raise HTTPException(status_code=400, detail="org_id is required")
+
+    validated_from = _validate_iso_date(start_date, "from")
+    validated_to = _validate_iso_date(end_date, "to")
+
+    try:
+        sb = get_supabase(token.credentials)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        org_id = resolve_org_id_for_user(sb, caller_id, org_id, request=request)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=403, detail="Organization access denied")
+
+    MAX_EXPORT_ROWS = 5000
+    try:
+        query = _build_events_query(
+            sb, org_id,
+            user_id_filter=user_id,
+            action_type=action_type,
+            project_id=project_id,
+            validated_from=validated_from,
+            validated_to=validated_to,
+            limit=MAX_EXPORT_ROWS,
+            offset=0,
+        )
+        res = query.execute()
+    except Exception as exc:
+        logger.warning("audit_export query failed: %s", str(exc)[:200])
+        raise HTTPException(status_code=500, detail="Export query failed")
+
+    raw_rows: List[Dict[str, Any]] = res.data or []
+
+    # Build CSV in-memory
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(["id", "timestamp", "user_id", "action_type", "entity_type", "entity_id", "metadata"])
+
+    for row in raw_rows:
+        normalized = _normalize_event_row(row, project_id)
+        if normalized is None:
+            continue
+        writer.writerow([
+            normalized.get("id", ""),
+            normalized.get("timestamp", ""),
+            normalized.get("user_id", ""),
+            normalized.get("action_type", ""),
+            normalized.get("entity_type", ""),
+            normalized.get("entity_id", ""),
+            json.dumps(normalized.get("metadata", {}), ensure_ascii=False),
+        ])
+
+    output.seek(0)
+
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"audit_events_{ts}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
