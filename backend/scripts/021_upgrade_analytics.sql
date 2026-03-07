@@ -67,8 +67,8 @@ BEGIN
             ON upgrade_events FOR SELECT
             USING (
                 org_id IN (
-                    SELECT org_id FROM org_members
-                    WHERE user_id = auth.uid()::text
+                    SELECT org_id FROM memberships
+                    WHERE user_id = auth.uid()
                 )
             );
     END IF;
