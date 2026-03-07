@@ -9,7 +9,7 @@ import csv
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any, Dict, List
 import asyncio
 
 # Tests may call asyncio.get_event_loop().run_until_complete(...) without
@@ -262,3 +262,231 @@ def _build_csv_response(rows: list, org_id: str) -> StreamingResponse:
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ── Admin Dashboard Analytics ─────────────────────────────────────────────────
+
+@router.get("/admin/dashboard-stats")
+def get_dashboard_stats(
+    org_id: str = Query(..., description="Organization UUID"),
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+) -> Dict[str, Any]:
+    """
+    Admin dashboard: aggregate platform stats for the org.
+    Returns total projects, documents, runs, members, and failed runs.
+    """
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+
+    role = get_user_role(resolved_org_id, user_id, token.credentials)
+    if role not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Only owner or admin can access dashboard stats")
+
+    admin_sb = get_supabase_admin()
+
+    def _count(table: str, extra_eq: dict | None = None) -> int:
+        try:
+            q = admin_sb.table(table).select("id", count="exact").eq("org_id", resolved_org_id)
+            for k, v in (extra_eq or {}).items():
+                q = q.eq(k, v)
+            r = q.execute()
+            return r.count if r.count is not None else 0
+        except Exception:
+            return 0
+
+    return {
+        "org_id": resolved_org_id,
+        "total_projects": _count("projects"),
+        "total_documents": _count("documents"),
+        "total_runs": _count("runs"),
+        "failed_runs": _count("runs", {"status": "FAILED"}),
+        "total_members": _count("memberships"),
+        "completed_runs": _count("runs", {"status": "COMPLETED"}),
+    }
+
+
+@router.get("/admin/plan-distribution")
+def get_plan_distribution(
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+) -> Dict[str, Any]:
+    """
+    Admin dashboard: plan distribution across all orgs the user owns/admins.
+    Returns { plans: {starter: N, growth: N, elite: N}, total_orgs: N }
+    """
+    user_id = require_user_id(user)
+    admin_sb = get_supabase_admin()
+
+    plans: Dict[str, int] = {"starter": 0, "growth": 0, "elite": 0}
+    total = 0
+
+    try:
+        # Find all orgs where user is owner/admin
+        memberships = (
+            admin_sb.table("memberships")
+            .select("org_id, role")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        admin_org_ids = [
+            m["org_id"] for m in (memberships.data or [])
+            if m.get("role") in ("owner", "admin")
+        ]
+
+        if admin_org_ids:
+            orgs = (
+                admin_sb.table("organizations")
+                .select("id, plan_tier")
+                .in_("id", admin_org_ids)
+                .execute()
+            )
+            for org in (orgs.data or []):
+                tier = (org.get("plan_tier") or "starter").strip().lower()
+                plans[tier] = plans.get(tier, 0) + 1
+                total += 1
+    except Exception as exc:
+        logger.debug("plan-distribution failed: %s", str(exc)[:120])
+
+    return {"plans": plans, "total_orgs": total}
+
+
+@router.get("/admin/mrr-summary")
+def get_mrr_summary(
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+) -> Dict[str, Any]:
+    """
+    Admin dashboard: Monthly Recurring Revenue (MRR) summary.
+    Calculates MRR from plan distribution × plan prices.
+    """
+    user_id = require_user_id(user)
+    admin_sb = get_supabase_admin()
+
+    PLAN_PRICES_CENTS: Dict[str, int] = {
+        "starter": 14900,
+        "growth": 49900,
+        "elite": 149900,
+    }
+
+    plans: Dict[str, int] = {"starter": 0, "growth": 0, "elite": 0}
+    total_mrr_cents = 0
+
+    try:
+        memberships = (
+            admin_sb.table("memberships")
+            .select("org_id, role")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        admin_org_ids = [
+            m["org_id"] for m in (memberships.data or [])
+            if m.get("role") in ("owner", "admin")
+        ]
+
+        if admin_org_ids:
+            orgs = (
+                admin_sb.table("organizations")
+                .select("id, plan_tier, subscription_status")
+                .in_("id", admin_org_ids)
+                .execute()
+            )
+            for org in (orgs.data or []):
+                tier = (org.get("plan_tier") or "starter").strip().lower()
+                status = (org.get("subscription_status") or "").strip().lower()
+                plans[tier] = plans.get(tier, 0) + 1
+                # Only count active/trialing subscriptions in MRR
+                if status in ("active", "trialing"):
+                    total_mrr_cents += PLAN_PRICES_CENTS.get(tier, 0)
+    except Exception as exc:
+        logger.debug("mrr-summary failed: %s", str(exc)[:120])
+
+    return {
+        "mrr_cents": total_mrr_cents,
+        "mrr_dollars": round(total_mrr_cents / 100, 2),
+        "plan_counts": plans,
+        "total_active_orgs": sum(plans.values()),
+    }
+
+
+# ── Document Expiry & Re-run Alerts ──────────────────────────────────────────
+
+
+@router.get("/alerts/document-expiry")
+def get_document_expiry_alerts(
+    org_id: str = Query(..., description="Organization ID"),
+    days_ahead: int = Query(30, ge=1, le=365, description="Days ahead to check for expiring docs"),
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    GET /alerts/document-expiry?org_id=...&days_ahead=30
+
+    Returns expiring and expired documents across all projects in the org,
+    plus documents needing a compliance re-run.
+    """
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+    if not resolved_org_id:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    from app.core.document_expiry_service import get_expiry_summary
+    return get_expiry_summary(resolved_org_id, days_ahead=days_ahead)
+
+
+@router.post("/alerts/check-expiry")
+def check_and_send_expiry_alerts(
+    org_id: str = Query(..., description="Organization ID"),
+    days_ahead: int = Query(30, ge=1, le=365),
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    POST /alerts/check-expiry?org_id=...
+
+    Triggers a document expiry check and sends email notifications
+    to the org owner if any documents are expiring or expired.
+    """
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+    if not resolved_org_id:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Require owner/admin role
+    role = get_user_role(resolved_org_id, user_id, token.credentials)
+    if not role_has_permission(role or "", Permission.MANAGE_BILLING):
+        raise HTTPException(status_code=403, detail="Owner or admin role required")
+
+    from app.core.document_expiry_service import check_and_notify_expiry
+    return check_and_notify_expiry(resolved_org_id, days_ahead=days_ahead)
+
+
+@router.get("/alerts/rerun-candidates")
+def get_rerun_candidates_endpoint(
+    org_id: str = Query(..., description="Organization ID"),
+    stale_days: int = Query(90, ge=1, le=730, description="Days since last run to flag as stale"),
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    GET /alerts/rerun-candidates?org_id=...&stale_days=90
+
+    Returns documents that haven't had a compliance run in the specified window.
+    """
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id, request=request)
+    if not resolved_org_id:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    from app.core.document_expiry_service import get_rerun_candidates
+    return get_rerun_candidates(resolved_org_id, stale_days=stale_days)

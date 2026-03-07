@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     AUTH_MIN_PASSWORD_LENGTH: int = 10          # Minimum password length for SOC2
     AUTH_REQUIRE_EMAIL_VERIFICATION: bool = True # Block unverified email users
 
+    # Email notifications (SMTP)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@nyccompliancearchitect.com"
+    SMTP_FROM_NAME: str = "NYC Compliance Architect"
+    EMAIL_ENABLED: bool = False
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() == "production"

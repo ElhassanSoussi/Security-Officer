@@ -211,8 +211,47 @@ def _handle_subscription_updated_with_tracking(org_id: Optional[str], event_data
                         "stripe_price_id": new_price_id,
                     },
                 )
+                # Send upgrade confirmation + welcome emails (best-effort)
+                try:
+                    from app.core.email_service import send_upgrade_confirmation_email, send_welcome_email
+                    _send_plan_change_emails(org_id, old_plan, new_plan_enum.value)
+                except Exception:
+                    pass
         except Exception as exc:
             logger.debug("plan_upgraded tracking failed: %s", str(exc)[:120])
+
+
+def _send_plan_change_emails(org_id: str, old_plan: str, new_plan: str) -> None:
+    """Best-effort: send upgrade confirmation + welcome emails to org owner."""
+    try:
+        from app.core.email_service import send_upgrade_confirmation_email, send_welcome_email
+        admin_sb = get_supabase_admin()
+        # Find org owner email
+        members = (
+            admin_sb.table("memberships")
+            .select("user_id, role")
+            .eq("org_id", org_id)
+            .eq("role", "owner")
+            .limit(1)
+            .execute()
+        )
+        if not members.data:
+            return
+        owner_id = members.data[0]["user_id"]
+        profile = (
+            admin_sb.table("profiles")
+            .select("email")
+            .eq("user_id", owner_id)
+            .limit(1)
+            .execute()
+        )
+        email = (profile.data[0].get("email") if profile.data else None)
+        if not email:
+            return
+        send_upgrade_confirmation_email(email, old_plan, new_plan)
+        send_welcome_email(email, new_plan)
+    except Exception as exc:
+        logger.debug("_send_plan_change_emails failed: %s", str(exc)[:120])
 
 
 # ── Portal ────────────────────────────────────────────────────
@@ -908,3 +947,80 @@ def get_upgrade_analytics_endpoint(
         raise HTTPException(status_code=404, detail="Organization not found")
 
     return get_upgrade_analytics(resolved_org_id, days=30)
+
+
+# ── Coupon / Promo Code Support ──────────────────────────────────────────────
+
+
+class ValidateCouponRequest(BaseModel):
+    code: str
+
+
+class ApplyCouponRequest(BaseModel):
+    org_id: str
+    code: str
+
+
+@router.post("/validate-coupon", response_model=Dict[str, Any])
+def validate_coupon_endpoint(
+    body: ValidateCouponRequest,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Validate a Stripe coupon or promotion code.
+    Returns coupon details if valid, or {valid: false} otherwise.
+    """
+    from app.core.coupon_service import validate_coupon
+
+    result = validate_coupon(body.code)
+    if result:
+        return result
+    return {"valid": False, "code": body.code.strip().upper(), "message": "Invalid or expired coupon code"}
+
+
+@router.post("/apply-coupon", response_model=Dict[str, Any])
+def apply_coupon_endpoint(
+    body: ApplyCouponRequest,
+    request: Request,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Apply a coupon/promo code to the org's active subscription.
+    Requires owner/admin role.
+    """
+    from app.core.coupon_service import apply_coupon_to_subscription
+
+    user_id = require_user_id(user)
+    org_id = parse_uuid(body.org_id, "org_id", required=True)
+
+    sb = get_supabase(token.credentials)
+    resolve_org_id_for_user(sb, user_id, org_id, request=request)
+
+    result = apply_coupon_to_subscription(org_id, body.code)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed to apply coupon"))
+    return result
+
+
+@router.get("/discount", response_model=Dict[str, Any])
+def get_org_discount_endpoint(
+    org_id: str,
+    request: Request = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Return the current discount applied to the org's subscription, if any.
+    """
+    from app.core.coupon_service import get_org_discount
+
+    user_id = require_user_id(user)
+    org_id = parse_uuid(org_id, "org_id", required=True)
+
+    sb = get_supabase(token.credentials)
+    resolve_org_id_for_user(sb, user_id, org_id, request=request)
+
+    discount = get_org_discount(org_id)
+    return {"has_discount": discount is not None, "discount": discount}

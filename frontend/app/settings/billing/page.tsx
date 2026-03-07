@@ -27,6 +27,8 @@ import {
     MousePointerClick,
     Eye,
     Award,
+    Tag,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -471,6 +473,10 @@ export default function BillingPage() {
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
     const [orgId, setOrgId] = useState<string | null>(null);
     const [stripeReturnToast, setStripeReturnToast] = useState<"upgraded" | "unchanged" | null>(null);
+    const [couponCode, setCouponCode] = useState("");
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponResult, setCouponResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+    const [discount, setDiscount] = useState<{ coupon_id: string; name: string; percent_off?: number | null; amount_off?: number | null; duration?: string } | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -505,6 +511,53 @@ export default function BillingPage() {
         }
     }, []);
 
+    const loadDiscount = useCallback(async (oid: string, tok?: string) => {
+        try {
+            const res = await ApiClient.getOrgDiscount(oid, tok);
+            if (res.has_discount && res.discount) setDiscount(res.discount);
+        } catch { /* non-fatal */ }
+    }, []);
+
+    const handleApplyCoupon = async () => {
+        if (!orgId || !couponCode.trim()) return;
+        setCouponLoading(true);
+        setCouponResult(null);
+        try {
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            const tok = session?.access_token;
+
+            // Validate first
+            const validation = await ApiClient.validateCoupon(couponCode, tok);
+            if (!validation.valid && validation.valid !== undefined) {
+                setCouponResult({ type: "error", message: validation.message || "Invalid or expired coupon code" });
+                return;
+            }
+
+            // Apply
+            const result = await ApiClient.applyCoupon(orgId, couponCode, tok);
+            if (result.success) {
+                setCouponResult({ type: "success", message: "Coupon applied successfully!" });
+                setCouponCode("");
+                if (result.discount) {
+                    setDiscount({
+                        coupon_id: result.discount.coupon_id,
+                        name: result.discount.code,
+                        percent_off: result.discount.percent_off,
+                        amount_off: result.discount.amount_off,
+                        duration: result.discount.duration,
+                    });
+                }
+            } else {
+                setCouponResult({ type: "error", message: result.message || "Failed to apply coupon" });
+            }
+        } catch (e: any) {
+            setCouponResult({ type: "error", message: e?.message || "Failed to apply coupon" });
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
     // On mount: load billing; also handle Stripe portal return
     useEffect(() => {
         load().then(async (ctx) => {
@@ -513,6 +566,7 @@ export default function BillingPage() {
 
             // Always pre-load analytics in background
             loadAnalytics(oid, tok);
+            loadDiscount(oid, tok);
 
             if (stripeReturn) {
                 // Log stripe_portal_returned
@@ -726,7 +780,70 @@ export default function BillingPage() {
                         <PlanComparisonTable currentPlan={plan} nextPlan={nextPlan} />
                     )}
 
-                    {/* 4. Manage Billing */}
+                    {/* 4. Promo Code */}
+                    {data && !loading && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <Tag className="h-4 w-4 text-muted-foreground" />
+                                    Promo Code
+                                </CardTitle>
+                                <CardDescription>
+                                    Have a coupon or promotional code? Apply it to your subscription for a discount.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {discount && (
+                                    <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                        <span>
+                                            Active discount: <strong>{discount.name}</strong>
+                                            {discount.percent_off ? ` — ${discount.percent_off}% off` : ""}
+                                            {discount.amount_off ? ` — $${(discount.amount_off / 100).toFixed(2)} off` : ""}
+                                            {discount.duration ? ` (${discount.duration})` : ""}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter promo code"
+                                        value={couponCode}
+                                        onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
+                                        onKeyDown={(e) => { if (e.key === "Enter") handleApplyCoupon(); }}
+                                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        disabled={couponLoading}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        onClick={handleApplyCoupon}
+                                        disabled={couponLoading || !couponCode.trim()}
+                                        className="gap-1.5"
+                                    >
+                                        {couponLoading ? (
+                                            <>
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                Applying…
+                                            </>
+                                        ) : (
+                                            "Apply"
+                                        )}
+                                    </Button>
+                                </div>
+                                {couponResult && (
+                                    <p className={`text-sm flex items-center gap-1.5 ${couponResult.type === "success" ? "text-emerald-700" : "text-red-600"}`}>
+                                        {couponResult.type === "success"
+                                            ? <CheckCircle2 className="h-3.5 w-3.5" />
+                                            : <XCircle className="h-3.5 w-3.5" />
+                                        }
+                                        {couponResult.message}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 5. Manage Billing */}
                     {data && !loading && (
                         <Card>
                             <CardHeader>

@@ -1135,4 +1135,177 @@ export class ApiClient {
             return { limit_hits: 0, modal_shown: 0, upgrade_clicks: 0, conversions: 0, top_resource: null, resource_hits: {} };
         }
     }
+
+    // --- Admin Dashboard Analytics ---
+    static async getAdminDashboardStats(
+        orgId: string,
+        token?: string,
+    ): Promise<{
+        org_id: string;
+        total_projects: number;
+        total_documents: number;
+        total_runs: number;
+        failed_runs: number;
+        total_members: number;
+        completed_runs: number;
+    }> {
+        return this.fetch(`/admin/dashboard-stats?org_id=${orgId}`, {}, token);
+    }
+
+    static async getPlanDistribution(
+        token?: string,
+    ): Promise<{
+        plans: Record<string, number>;
+        total_orgs: number;
+    }> {
+        return this.fetch("/admin/plan-distribution", {}, token);
+    }
+
+    static async getMrrSummary(
+        token?: string,
+    ): Promise<{
+        mrr_cents: number;
+        mrr_dollars: number;
+        plan_counts: Record<string, number>;
+        total_active_orgs: number;
+    }> {
+        return this.fetch("/admin/mrr-summary", {}, token);
+    }
+
+    // --- Coupon / Promo Code Support ---
+    static async validateCoupon(
+        code: string,
+        token?: string,
+    ): Promise<{
+        valid: boolean;
+        id?: string;
+        code: string;
+        percent_off?: number | null;
+        amount_off?: number | null;
+        duration?: string;
+        name?: string;
+        message?: string;
+    }> {
+        return this.fetch("/billing/validate-coupon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+        }, token);
+    }
+
+    static async applyCoupon(
+        orgId: string,
+        code: string,
+        token?: string,
+    ): Promise<{
+        success: boolean;
+        message: string;
+        discount?: {
+            coupon_id: string;
+            code: string;
+            percent_off?: number | null;
+            amount_off?: number | null;
+            duration?: string;
+        } | null;
+    }> {
+        return this.fetch("/billing/apply-coupon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ org_id: orgId, code }),
+        }, token);
+    }
+
+    static async getOrgDiscount(
+        orgId: string,
+        token?: string,
+    ): Promise<{
+        has_discount: boolean;
+        discount: {
+            coupon_id: string;
+            name: string;
+            percent_off?: number | null;
+            amount_off?: number | null;
+            duration?: string;
+            start?: number;
+            end?: number | null;
+        } | null;
+    }> {
+        return this.fetch(`/billing/discount?org_id=${orgId}`, {}, token);
+    }
+
+    // --- Document Expiry & Re-run Alerts ---
+    static async getDocumentExpiryAlerts(
+        orgId: string,
+        daysAhead: number = 30,
+        token?: string,
+    ): Promise<{
+        expiring_count: number;
+        expired_count: number;
+        rerun_needed_count: number;
+        total_alerts: number;
+        expiring_docs: Array<{
+            id: string;
+            filename: string;
+            project_id: string;
+            project_name: string;
+            expiration_date: string;
+            status: string;
+            days_remaining: number | null;
+        }>;
+        expired_docs: Array<{
+            id: string;
+            filename: string;
+            project_id: string;
+            project_name: string;
+            expiration_date: string;
+            status: string;
+            days_remaining: number | null;
+        }>;
+        rerun_docs: Array<{
+            id: string;
+            filename: string;
+            project_id: string;
+            project_name: string;
+            last_run_at: string | null;
+            days_since_run: number | null;
+        }>;
+    }> {
+        const params = new URLSearchParams({ org_id: orgId, days_ahead: String(daysAhead) });
+        try {
+            return await this.fetch(`/alerts/document-expiry?${params}`, {}, token);
+        } catch {
+            return { expiring_count: 0, expired_count: 0, rerun_needed_count: 0, total_alerts: 0, expiring_docs: [], expired_docs: [], rerun_docs: [] };
+        }
+    }
+
+    static async checkAndNotifyExpiry(
+        orgId: string,
+        token?: string,
+    ): Promise<{
+        alerts_found: number;
+        notifications_sent: boolean;
+    }> {
+        const params = new URLSearchParams({ org_id: orgId });
+        return this.fetch(`/alerts/check-expiry?${params}`, { method: "POST" }, token);
+    }
+
+    static async getRerunCandidates(
+        orgId: string,
+        staleDays: number = 90,
+        token?: string,
+    ): Promise<Array<{
+        id: string;
+        filename: string;
+        project_id: string;
+        project_name: string;
+        last_run_at: string | null;
+        days_since_run: number | null;
+    }>> {
+        const params = new URLSearchParams({ org_id: orgId, stale_days: String(staleDays) });
+        try {
+            return await this.fetch(`/alerts/rerun-candidates?${params}`, {}, token);
+        } catch {
+            return [];
+        }
+    }
 }
