@@ -139,9 +139,10 @@ function UsageRow({ label, icon, current, limit }: UsageRowProps) {
 }
 
 const PLAN_BADGE: Record<string, { label: string; className: string }> = {
-    FREE: { label: "Free", className: "border-gray-200 bg-gray-50 text-gray-600" },
-    PRO: { label: "Pro", className: "border-blue-200 bg-blue-50 text-blue-700" },
-    ENTERPRISE: { label: "Enterprise", className: "border-purple-200 bg-purple-50 text-purple-700" },
+    // current plan names (backend sends lowercase)
+    starter: { label: "Starter", className: "border-slate-200 bg-slate-50 text-slate-700" },
+    growth:  { label: "Growth",  className: "border-blue-200 bg-blue-50 text-blue-700" },
+    elite:   { label: "Elite",   className: "border-violet-200 bg-violet-50 text-violet-700" },
 };
 
 export function UsagePanel({ orgId, token }: UsagePanelProps) {
@@ -170,13 +171,14 @@ export function UsagePanel({ orgId, token }: UsagePanelProps) {
     if (!usage) return null;
 
     const { limits, plan } = usage;
-    const planBadge = PLAN_BADGE[plan] ?? PLAN_BADGE["FREE"];
+    const planKey = (plan || "starter").toLowerCase();
+    const planBadge = PLAN_BADGE[planKey] ?? PLAN_BADGE["starter"];
 
     // Determine whether CTA should be shown: any metric at/near limit
     const runPct = pct(usage.runs_this_month, limits.max_runs_per_month);
     const docPct = pct(usage.documents_total, limits.max_documents);
     const memPct = pct(usage.memory_entries_total, limits.max_memory_entries);
-    const showCTA = plan !== "ENTERPRISE" && Math.max(runPct, docPct, memPct) >= 75;
+    const showCTA = planKey !== "elite" && Math.max(runPct, docPct, memPct) >= 75;
 
     return (
         <Card className="border-border">
@@ -199,17 +201,17 @@ export function UsagePanel({ orgId, token }: UsagePanelProps) {
                             <Zap className="h-3 w-3 mr-1" />
                             {planBadge.label} Plan
                         </Badge>
-                        {showCTA && plan === "FREE" && (
+                        {showCTA && planKey === "starter" && (
                             <Link href="/plans">
                                 <Button size="sm" className="h-7 text-xs gap-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
                                     <Zap className="h-3 w-3" /> Upgrade Plan
                                 </Button>
                             </Link>
                         )}
-                        {showCTA && plan === "PRO" && (
+                        {showCTA && planKey === "growth" && (
                             <Link href="/plans">
-                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-purple-300 text-purple-700 hover:bg-purple-50">
-                                    <Zap className="h-3 w-3" /> Go Enterprise
+                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-violet-300 text-violet-700 hover:bg-violet-50">
+                                    <Zap className="h-3 w-3" /> Go Elite
                                 </Button>
                             </Link>
                         )}

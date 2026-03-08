@@ -659,7 +659,7 @@ export class ApiClient {
 
     static async createStripeCheckout(
         orgId: string,
-        planName: "FREE" | "PRO" | "ENTERPRISE",
+        planName: "starter" | "growth" | "elite",
         token?: string,
     ): Promise<{ url: string; plan_name: string }> {
         return this.post<{ url: string; plan_name: string }>("/billing/checkout", {

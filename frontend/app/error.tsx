@@ -4,7 +4,7 @@ import * as React from "react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 export default function GlobalError({
-    error,
+    error: _error,
     reset,
 }: {
     error: Error & { digest?: string };
