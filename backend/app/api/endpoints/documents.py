@@ -269,6 +269,26 @@ async def upload_project_document(
     except Exception:
         pass
 
+    # Compliance Intelligence — extract metadata and persist (best-effort)
+    try:
+        from app.core.compliance_engine import extract_document_metadata, upsert_document_metadata
+        from app.core.database import get_supabase_admin
+        text_preview = ""
+        if ext == "txt":
+            text_preview = content.decode("utf-8", errors="ignore")[:5000]
+        meta = extract_document_metadata(filename, text_preview)
+        admin_sb = get_supabase_admin()
+        upsert_document_metadata(
+            admin_sb,
+            org_id=org_id,
+            document_id=document_id,
+            document_type=meta["document_type"],
+            expiration_date=meta["expiration_date"],
+            risk_level=meta["risk_level"],
+        )
+    except Exception as _ce:
+        logger.debug("Compliance metadata extraction skipped: %s", _ce)
+
     return {
         "status": "success",
         "document_id": document_id,

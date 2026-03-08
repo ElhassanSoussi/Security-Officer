@@ -829,6 +829,51 @@ export class ApiClient {
         }
     }
 
+    static async getComplianceOverview(orgId: string, token?: string): Promise<any> {
+        const params = new URLSearchParams({ org_id: orgId });
+        try {
+            return await this.fetch<any>(`/compliance/overview?${params.toString()}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return null;
+        }
+    }
+
+    static async getProjectCompliance(projectId: string, token?: string): Promise<any> {
+        try {
+            return await this.fetch<any>(`/compliance/projects/${projectId}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return null;
+        }
+    }
+
+    static async scanProjectCompliance(projectId: string, token?: string): Promise<any> {
+        return this.fetch<any>(`/compliance/projects/${projectId}/scan`, { method: "POST" }, token);
+    }
+
+    static async getComplianceIssues(
+        orgId: string,
+        token?: string,
+        opts: { projectId?: string; severity?: string; status?: string; limit?: number } = {},
+    ): Promise<any[]> {
+        const params = new URLSearchParams({ org_id: orgId });
+        if (opts.projectId) params.set("project_id", opts.projectId);
+        if (opts.severity) params.set("severity", opts.severity);
+        if (opts.status) params.set("status", opts.status);
+        if (opts.limit) params.set("limit", String(opts.limit));
+        try {
+            return await this.fetch<any[]>(`/compliance/issues?${params.toString()}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return [];
+        }
+    }
+
+    static async resolveComplianceIssue(issueId: string, token?: string): Promise<any> {
+        return this.fetch<any>(`/compliance/issues/${issueId}/resolve`, { method: "PATCH" }, token);
+    }
+
     static async compareRuns(
         runId: string,
         otherId: string,

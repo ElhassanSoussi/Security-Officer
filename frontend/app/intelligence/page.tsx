@@ -22,6 +22,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ConfidenceBar, MiniBarChart, ScoreGauge } from "@/components/ui/ConfidenceBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { normalizeConfidenceScore } from "@/lib/confidence";
+import { Badge } from "@/components/ui/badge";
 
 interface ReportData {
   orgName: string;
@@ -31,15 +32,38 @@ interface ReportData {
   exportCount: number;
   totalQuestions: number;
   confidenceDist: { high: number; medium: number; low: number };
-  reviewCompletion: number; // 0-100
-  auditCompleteness: number; // 0-100
+  reviewCompletion: number;
+  auditCompleteness: number;
   riskLevel: "high" | "medium" | "low";
   exportHistory: { id: string; created_at: string; filename: string }[];
   runsByMonth: { label: string; value: number }[];
 }
 
+interface ComplianceEngineData {
+  avg_score: number | null;
+  overall_risk_level: string | null;
+  active_issues: number;
+  expiring_documents: number;
+  issues_by_severity: { high: number; medium: number; low: number };
+  top_risks: Array<{
+    id: string;
+    issue_type: string;
+    severity: string;
+    description: string;
+    project_id: string;
+    created_at: string;
+  }>;
+}
+
+const SEVERITY_BADGE: Record<string, string> = {
+  high: "bg-red-100 text-red-700 border-red-200",
+  medium: "bg-amber-100 text-amber-700 border-amber-200",
+  low: "bg-blue-50 text-blue-700 border-blue-200",
+};
+
 export default function IntelligenceReportPage() {
   const [data, setData] = useState<ReportData | null>(null);
+  const [complianceEngine, setComplianceEngine] = useState<ComplianceEngineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -60,12 +84,13 @@ export default function IntelligenceReportPage() {
       setStoredOrgId(org.id);
 
       // Fetch data in parallel
-      const [_projects, runs, stats, auditLog, exportEvents] = await Promise.all([
+      const [_projects, runs, stats, auditLog, exportEvents, complianceData] = await Promise.all([
         ApiClient.getProjects(org.id, token).catch(() => []),
         ApiClient.getRuns(org.id, undefined, 200, token).catch(() => []),
         ApiClient.getStats(org.id, token).catch(() => ({ active_projects: 0, documents_ingested: 0, runs_completed: 0 })),
         ApiClient.getAuditLog(org.id, {}, token).catch(() => []),
         ApiClient.getExportEvents(org.id, {}, token).catch(() => []),
+        ApiClient.getComplianceOverview(org.id, token).catch(() => null),
       ]);
 
       // Compute confidence distribution from audit log
@@ -129,6 +154,10 @@ export default function IntelligenceReportPage() {
         exportHistory: exportHist,
         runsByMonth: months,
       });
+
+      if (complianceData) {
+        setComplianceEngine(complianceData);
+      }
     } catch (e: any) {
       console.error("Intelligence report error:", e);
       if (String(e?.message || "").toLowerCase().includes("unauthorized")) {
@@ -318,6 +347,125 @@ export default function IntelligenceReportPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Compliance Engine — Score, Issues by Severity, Top Risks */}
+      {complianceEngine && (complianceEngine.avg_score !== null || complianceEngine.active_issues > 0) && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Compliance Score */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <ShieldCheck className="h-4 w-4 text-blue-600" /> Compliance Score
+              </CardTitle>
+              <CardDescription>Average across all projects based on document analysis</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {complianceEngine.avg_score !== null ? (
+                <div className="flex items-center gap-4">
+                  <ScoreGauge score={complianceEngine.avg_score} label="Avg Score" size="md" />
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Open Issues</span>
+                      <span className="font-semibold">{complianceEngine.active_issues}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Expiring (60d)</span>
+                      <span className={`font-semibold ${complianceEngine.expiring_documents > 0 ? "text-amber-700" : ""}`}>
+                        {complianceEngine.expiring_documents}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Overall Risk</span>
+                      <span className={`font-semibold capitalize ${
+                        complianceEngine.overall_risk_level === "high" ? "text-red-700"
+                        : complianceEngine.overall_risk_level === "medium" ? "text-amber-700"
+                        : "text-green-700"
+                      }`}>
+                        {complianceEngine.overall_risk_level || "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No compliance scans run yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Issues by Severity */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> Issues by Severity
+              </CardTitle>
+              <CardDescription>Open compliance issues across all projects</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {complianceEngine.active_issues === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <CheckCircle2 className="h-4 w-4" /> No open compliance issues.
+                </div>
+              ) : (
+                <>
+                  {(["high", "medium", "low"] as const).map((sev) => {
+                    const count = complianceEngine.issues_by_severity[sev] ?? 0;
+                    const pct = complianceEngine.active_issues > 0
+                      ? Math.round((count / complianceEngine.active_issues) * 100)
+                      : 0;
+                    return (
+                      <div key={sev} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="capitalize font-medium">{sev}</span>
+                          <span className="text-muted-foreground">{count} issue{count !== 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              sev === "high" ? "bg-red-500" : sev === "medium" ? "bg-amber-400" : "bg-blue-400"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Top Compliance Risks */}
+      {complianceEngine && complianceEngine.top_risks.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-red-500" /> Top Compliance Risks
+            </CardTitle>
+            <CardDescription>Highest-priority open issues requiring attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {complianceEngine.top_risks.map((risk, i) => (
+                <div
+                  key={risk.id || i}
+                  className="flex items-start gap-3 rounded-md border px-3 py-2.5 text-sm"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                  <p className="flex-1 text-xs text-muted-foreground leading-relaxed">{risk.description}</p>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] px-1.5 py-0 shrink-0 ${SEVERITY_BADGE[risk.severity] || ""}`}
+                  >
+                    {risk.severity}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Risk Summary Banner */}
       <Card className={

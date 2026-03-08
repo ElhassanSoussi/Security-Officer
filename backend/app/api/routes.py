@@ -99,6 +99,27 @@ async def ingest_document(
             increment_usage(org_id, "storage", len(content))
         except Exception:
             pass
+
+        # Compliance Intelligence — extract metadata (best-effort, never blocks upload)
+        try:
+            from app.core.compliance_engine import extract_document_metadata, upsert_document_metadata
+            from app.core.database import get_supabase_admin as _get_admin
+            _ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+            _text_preview = content.decode("utf-8", errors="ignore")[:5000] if _ext == "txt" else ""
+            _meta = extract_document_metadata(file.filename or "", _text_preview)
+            _doc_id = result.get("document_id") if isinstance(result, dict) else None
+            if _doc_id:
+                upsert_document_metadata(
+                    _get_admin(),
+                    org_id=org_id,
+                    document_id=_doc_id,
+                    document_type=_meta["document_type"],
+                    expiration_date=_meta["expiration_date"],
+                    risk_level=_meta["risk_level"],
+                )
+        except Exception:
+            pass
+
         return {"status": "success", "data": result}
     except HTTPException:
         raise

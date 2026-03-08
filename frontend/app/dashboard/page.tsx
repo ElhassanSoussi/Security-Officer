@@ -20,6 +20,7 @@ import { normalizeConfidenceScore } from "@/lib/confidence";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ComplianceHealthPanel } from "@/components/ComplianceHealthPanel";
+import { ComplianceIntelligencePanel } from "@/components/ComplianceIntelligencePanel";
 import { UsagePanel } from "@/components/UsagePanel";
 import { isDemoMode, DEMO_STATS, DEMO_ACTIVITY, DEMO_AUDITS, DEMO_ORG_ID } from "@/lib/demo-data";
 
@@ -347,6 +348,11 @@ export default function Dashboard() {
             {/* Compliance Health Panel */}
             {!loading && !demoActive && orgId && (
                 <ComplianceHealthPanel orgId={orgId} token={token} />
+            )}
+
+            {/* Compliance Intelligence Panel */}
+            {!loading && !demoActive && orgId && (
+                <ComplianceIntelligencePanel orgId={orgId} token={token} />
             )}
 
             {/* Usage Panel */}
