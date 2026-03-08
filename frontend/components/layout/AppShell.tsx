@@ -20,6 +20,7 @@ const PUBLIC_ROUTES = new Set([
     "/signup",
     "/health",
     "/contact",
+    "/demo",
 ]);
 
 export function AppShell({ children }: AppShellProps) {

@@ -6,8 +6,11 @@ import { createClient } from "@/utils/supabase/server";
 
 import {
     HeroSection,
+    TrustBar,
     ProblemSection,
+    HowItWorksSection,
     SolutionSection,
+    ProductProofSection,
     SocialProofSection,
     PricingSection,
     EnterpriseCTASection,
@@ -39,6 +42,35 @@ export default async function LandingPage() {
                             NYC Compliance
                         </span>
                     </div>
+
+                    {/* Desktop nav links */}
+                    <div className="hidden md:flex items-center gap-1 text-sm text-muted-foreground">
+                        <a
+                            href="#features"
+                            className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors"
+                        >
+                            Features
+                        </a>
+                        <a
+                            href="#how-it-works"
+                            className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors"
+                        >
+                            How It Works
+                        </a>
+                        <a
+                            href="#pricing"
+                            className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors"
+                        >
+                            Pricing
+                        </a>
+                        <Link
+                            href="/demo"
+                            className="px-3 py-1.5 rounded-md hover:text-foreground hover:bg-muted/50 transition-colors"
+                        >
+                            Demo
+                        </Link>
+                    </div>
+
                     <div className="flex items-center gap-3">
                         <Link href="/login">
                             <Button variant="ghost" size="sm">Sign In</Button>
@@ -53,19 +85,28 @@ export default async function LandingPage() {
             {/* ── 1. Hero ───────────────────────────────────────── */}
             <HeroSection />
 
-            {/* ── 2. Problem ────────────────────────────────────── */}
+            {/* ── 2. Trust Bar ──────────────────────────────────── */}
+            <TrustBar />
+
+            {/* ── 3. Problem ────────────────────────────────────── */}
             <ProblemSection />
 
-            {/* ── 3. Solution ───────────────────────────────────── */}
+            {/* ── 4. How It Works ───────────────────────────────── */}
+            <HowItWorksSection />
+
+            {/* ── 5. Solution / Capabilities ────────────────────── */}
             <SolutionSection />
 
-            {/* ── 4. Social Proof ───────────────────────────────── */}
+            {/* ── 6. Product Proof / Screens ────────────────────── */}
+            <ProductProofSection />
+
+            {/* ── 7. Social Proof ───────────────────────────────── */}
             <SocialProofSection />
 
-            {/* ── 5. Pricing ────────────────────────────────────── */}
+            {/* ── 8. Pricing ────────────────────────────────────── */}
             <PricingSection />
 
-            {/* ── 6. Enterprise CTA + Trust Bar ─────────────────── */}
+            {/* ── 9. Final CTA + Trust Bar ──────────────────────── */}
             <EnterpriseCTASection />
 
             {/* ── Footer ────────────────────────────────────────── */}
@@ -82,19 +123,34 @@ export default async function LandingPage() {
                                 </span>
                             </div>
                             <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-                                AI-powered security questionnaire automation for NYC
-                                construction compliance. Built for SCA, MTA, and PASSPort
-                                submissions.
+                                Evidence-backed compliance questionnaire automation for NYC
+                                construction. Built for SCA, MTA, and PASSPort submissions.
                             </p>
                         </div>
+
                         <div>
                             <h4 className="text-sm font-semibold text-foreground mb-3">
                                 Product
                             </h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li>
+                                    <Link href="/demo" className="hover:text-foreground transition-colors">
+                                        Demo
+                                    </Link>
+                                </li>
+                                <li>
+                                    <a href="#pricing" className="hover:text-foreground transition-colors">
+                                        Pricing
+                                    </a>
+                                </li>
+                                <li>
                                     <Link href="/signup" className="hover:text-foreground transition-colors">
-                                        Sign Up
+                                        Start Free Trial
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link href="/contact" className="hover:text-foreground transition-colors">
+                                        Schedule Demo
                                     </Link>
                                 </li>
                                 <li>
@@ -102,21 +158,12 @@ export default async function LandingPage() {
                                         Sign In
                                     </Link>
                                 </li>
-                                <li>
-                                    <Link href="/contact" className="hover:text-foreground transition-colors">
-                                        Request Demo
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/plans" className="hover:text-foreground transition-colors">
-                                        Pricing
-                                    </Link>
-                                </li>
                             </ul>
                         </div>
+
                         <div>
                             <h4 className="text-sm font-semibold text-foreground mb-3">
-                                Legal
+                                Legal &amp; Contact
                             </h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li>
@@ -142,13 +189,14 @@ export default async function LandingPage() {
                             </ul>
                         </div>
                     </div>
+
                     <div className="border-t border-border mt-8 pt-6 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                         <span>
                             © {new Date().getFullYear()} NYC Compliance Architect. All
                             rights reserved.
                         </span>
                         <span>
-                            v1.0.0 · Security-first architecture with auditable actions
+                            Security-first architecture · Auditable actions · SOC 2 aligned
                         </span>
                     </div>
                 </div>

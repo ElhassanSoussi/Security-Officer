@@ -1,6 +1,9 @@
 export { HeroSection } from "./HeroSection";
+export { TrustBar } from "./TrustBar";
 export { ProblemSection } from "./ProblemSection";
+export { HowItWorksSection } from "./HowItWorksSection";
 export { SolutionSection } from "./SolutionSection";
+export { ProductProofSection } from "./ProductProofSection";
 export { SocialProofSection } from "./SocialProofSection";
 export { PricingSection } from "./PricingSection";
 export { EnterpriseCTASection } from "./EnterpriseCTASection";

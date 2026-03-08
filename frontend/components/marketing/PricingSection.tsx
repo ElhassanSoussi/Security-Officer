@@ -49,7 +49,7 @@ const PLANS: Plan[] = [
         href: "/signup",
     },
     {
-        name: "Enterprise",
+        name: "Elite",
         price: "Custom",
         period: "",
         description:
@@ -71,6 +71,7 @@ const PLANS: Plan[] = [
 export function PricingSection() {
     return (
         <section
+            id="pricing"
             className="border-t border-border/50"
             data-testid="marketing-pricing"
         >

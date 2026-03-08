@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ArrowRight, ShieldCheck, CheckCircle2, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const TRUST_SIGNALS = [
@@ -10,7 +10,7 @@ const TRUST_SIGNALS = [
 
 export function HeroSection() {
     return (
-        <section className="relative overflow-hidden" data-testid="marketing-hero">
+        <section id="hero" className="relative overflow-hidden" data-testid="marketing-hero">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
             <div className="relative max-w-6xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-24">
                 <div className="max-w-3xl">
@@ -20,25 +20,31 @@ export function HeroSection() {
                     </div>
 
                     <h1 className="text-4xl sm:text-5xl md:text-[3.5rem] font-bold tracking-tight text-foreground leading-[1.08]">
-                        Submit compliance questionnaires{" "}
-                        <span className="text-primary">in hours, not weeks.</span>
+                        Complete high-stakes compliance questionnaires{" "}
+                        <span className="text-primary">faster with evidence-backed answers.</span>
                     </h1>
 
                     <p className="mt-6 text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                        Your team still copies answers from old spreadsheets, hunts for
-                        insurance certs, and prays nothing is out of date.
-                        There is a better way.
+                        Built for NYC contractors and compliance-heavy vendors. Your own
+                        documents become the source of truth — every answer is cited,
+                        traceable, and reviewer-approved before export.
                     </p>
 
                     <div className="mt-8 flex flex-wrap items-center gap-3">
-                        <Link href="/contact">
+                        <Link href="/signup">
                             <Button size="lg" className="gap-2 text-base px-6 h-12">
-                                Request a Demo <ArrowRight className="h-4 w-4" />
+                                Start Free Trial <ArrowRight className="h-4 w-4" />
                             </Button>
                         </Link>
-                        <Link href="/signup">
+                        <Link href="/contact">
                             <Button size="lg" variant="outline" className="text-base px-6 h-12">
-                                Start Free Trial
+                                Book Demo
+                            </Button>
+                        </Link>
+                        <Link href="/demo">
+                            <Button size="lg" variant="ghost" className="gap-2 text-base px-4 h-12 text-muted-foreground hover:text-foreground">
+                                <PlayCircle className="h-4 w-4" />
+                                View Product Demo
                             </Button>
                         </Link>
                     </div>

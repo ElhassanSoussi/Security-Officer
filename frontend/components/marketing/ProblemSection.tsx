@@ -30,6 +30,7 @@ const PAIN_POINTS = [
 export function ProblemSection() {
     return (
         <section
+            id="features"
             className="border-t border-border/50 bg-muted/30"
             data-testid="marketing-problem"
         >
