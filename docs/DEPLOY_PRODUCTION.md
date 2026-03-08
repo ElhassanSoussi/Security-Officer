@@ -40,6 +40,8 @@ Render (nyc-compliance-api)
 | Variable | Value |
 |---|---|
 | `ENVIRONMENT` | `production` |
+| `APP_VERSION` | release tag or commit SHA |
+| `RELEASE_TIMESTAMP` | (optional) ISO-8601 UTC timestamp |
 | `SUPABASE_URL` | `https://<project>.supabase.co` |
 | `SUPABASE_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role key |
@@ -55,7 +57,19 @@ Render (nyc-compliance-api)
 | `STRIPE_PRICE_ENTERPRISE` | Stripe Price ID for Enterprise plan |
 | `SENTRY_DSN` | (optional) |
 
+> Backend startup behavior:
+> - In production, the service fails fast if critical env vars are missing.
+> - In non-production, the service logs warnings and starts.
+
 > Render auto-injects `$PORT`. The Dockerfile CMD uses `${PORT:-8000}`.
+
+### Post-deploy checks
+
+- `GET /health` (should be 200)
+- `GET /api/v1/system/readiness` (should return `status: ok` or `warning`)
+
+Run:
+- `python scripts/smoke_production_backend.py`
 
 ### Custom Domain (Optional)
 
@@ -83,9 +97,10 @@ To use `api.nyccompliancearchitect.com`:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Supabase → Settings → API → `anon` `public` |
 | `NEXT_PUBLIC_API_URL` | `/api/v1` | Keep as `/api/v1` — the proxy handles the rest |
 | `BACKEND_INTERNAL_URL` | `https://security-officer.onrender.com` | ⚠️ **REQUIRED** — without this, API calls return 404. NO `/api/v1` suffix! |
-| `NEXT_PUBLIC_APP_VERSION` | `1.0.0` | |
+| `NEXT_PUBLIC_APP_VERSION` | match backend `APP_VERSION` | |
 | `NEXT_PUBLIC_SITE_URL` | `https://nyccompliancearchitect.com` | |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_live_...` or `pk_test_...` | Stripe publishable key (safe for client-side) |
+| `NEXT_PUBLIC_BILLING_ENABLED` | `false` or `true` | When `true`, frontend requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
 
 > ⚠️ **NEVER** set `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET` on Vercel.
 > Those belong on the backend (Render) only. The frontend must only have
@@ -128,6 +143,11 @@ backend. Symptoms: "Decoding failed", "Failed to load dashboard data",
 
 > **Recommendation:** Once the custom domain is live, deploy to **Production**
 > and the issue disappears. For Preview testing, option 1 is fastest.
+
+### Post-deploy checks
+
+Run:
+- `python scripts/smoke_production_frontend.py`
 
 ---
 
@@ -195,7 +215,7 @@ psql "$DATABASE_URL" -f backend/scripts/002_project_workspace.sql
 
 1. Go to **Stripe Dashboard → Developers → Webhooks → Add endpoint**.
 2. Set the endpoint URL to your backend webhook receiver:
-   ```
+   ```text
    https://your-backend.onrender.com/api/v1/billing/webhook19
    ```
 3. Subscribe to these events:

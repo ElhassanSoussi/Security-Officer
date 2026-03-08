@@ -79,12 +79,13 @@ class TestExportGate:
 
         result_bytes = excel_agent.generate_excel(template, answers)
         wb = load_workbook(BytesIO(result_bytes))
-        ws = wb["Sheet1"]
+        try:
+            ws = wb["Sheet1"]
 
-        assert ws["B2"].value is not None, "Approved answer must be written to B2"
-        assert "fire" in ws["B2"].value.lower() or "Section 5.2" in ws["B2"].value
-
-        wb.close()
+            assert ws["B2"].value is not None, "Approved answer must be written to B2"
+            assert "fire" in ws["B2"].value.lower() or "Section 5.2" in ws["B2"].value
+        finally:
+            wb.close()
 
     def test_rejected_answer_left_blank(self):
         """Rejected answers MUST NOT appear in the target cell."""
@@ -104,13 +105,14 @@ class TestExportGate:
 
         result_bytes = excel_agent.generate_excel(template, answers)
         wb = load_workbook(BytesIO(result_bytes))
-        ws = wb["Sheet1"]
+        try:
+            ws = wb["Sheet1"]
 
-        cell_val = ws["B3"].value
-        assert cell_val is None or str(cell_val).strip() == "", \
-            f"Rejected answer must NOT be written to B3, got: {cell_val!r}"
-
-        wb.close()
+            cell_val = ws["B3"].value
+            assert cell_val is None or str(cell_val).strip() == "", \
+                f"Rejected answer must NOT be written to B3, got: {cell_val!r}"
+        finally:
+            wb.close()
 
     def test_pending_answer_left_blank(self):
         """Pending (unreviewed) answers MUST NOT appear in the target cell."""

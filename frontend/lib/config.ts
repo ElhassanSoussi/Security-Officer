@@ -27,6 +27,12 @@ interface AppConfig {
 
   /** Application version string */
   version: string;
+
+  /** Stripe publishable key (public). Required if billing is enabled for the deployed environment. */
+  stripePublishableKey: string;
+
+  /** Whether billing is expected to be enabled (public build-time flag). */
+  billingEnabled: boolean;
 }
 
 /**
@@ -58,10 +64,34 @@ function normaliseApiUrl(raw: string): string {
 function loadConfig(): AppConfig {
   const environment = (process.env.NODE_ENV || "development") as AppConfig["environment"];
 
+  const apiUrl = normaliseApiUrl(process.env.NEXT_PUBLIC_API_URL || "/api/v1");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+  const billingEnabled = String(process.env.NEXT_PUBLIC_BILLING_ENABLED || "").toLowerCase() === "true";
+
+  const missing: string[] = [];
+  if (!apiUrl || !apiUrl.trim()) missing.push("NEXT_PUBLIC_API_URL");
+  if (!supabaseUrl || !supabaseUrl.trim()) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+  if (!supabaseAnonKey || !supabaseAnonKey.trim()) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (billingEnabled && (!stripePublishableKey || !stripePublishableKey.trim())) {
+    missing.push("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY");
+  }
+
+  // During builds and runtime, we want a clear failure rather than silent empty strings.
+  if (missing.length) {
+    throw new Error(
+      `Missing required frontend env var(s): ${missing.join(", ")}. ` +
+      "Set them in Vercel (Project → Settings → Environment Variables) and redeploy."
+    );
+  }
+
   return {
-    apiUrl: normaliseApiUrl(process.env.NEXT_PUBLIC_API_URL || "/api/v1"),
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+    apiUrl,
+    supabaseUrl,
+    supabaseAnonKey,
+    stripePublishableKey,
+    billingEnabled,
     environment,
     isDev: environment === "development",
     isProd: environment === "production",

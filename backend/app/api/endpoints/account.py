@@ -276,3 +276,114 @@ async def patch_account_avatar(
         avatar_url=public_url,
         theme_preference=row.get("theme_preference", "system"),
     )
+
+
+@router.get("/account/usage")
+def get_account_usage(
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Return the org's current plan, resource limits, live usage counts,
+    percentage consumed, and next upgrade tier.
+
+    Response shape:
+    {
+      "plan": "starter",
+      "limits":  { "projects": 5, "documents": 25, "runs": 10 },
+      "usage":   { "projects": 2, "documents": 8,  "runs": 3  },
+      "percent": { "projects": 40, "documents": 32, "runs": 30 },
+      "next_plan": "growth"
+    }
+    """
+    from datetime import datetime, timezone
+    from app.core.plan_service import PlanService, Plan, PLAN_LIMITS, get_next_tier
+
+    user_id = require_user_id(user)
+    admin_sb = get_supabase_admin()
+
+    # ── Resolve org_id ───────────────────────────────────────
+    resolved_org_id: Optional[str] = None
+    if org_id:
+        try:
+            from app.core.org_context import resolve_org_id_for_user
+            from app.core.database import get_supabase
+            sb = get_supabase(token.credentials)
+            resolved_org_id = resolve_org_id_for_user(sb, user_id, org_id)
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    if not resolved_org_id:
+        # Fall back to first org the user belongs to
+        try:
+            res = admin_sb.table("org_members") \
+                .select("org_id") \
+                .eq("user_id", user_id) \
+                .limit(1) \
+                .execute()
+            if res.data:
+                resolved_org_id = res.data[0]["org_id"]
+        except Exception:
+            pass
+
+    # ── Plan ─────────────────────────────────────────────────
+    if resolved_org_id:
+        plan_enum = PlanService.get_org_plan(resolved_org_id)
+    else:
+        plan_enum = Plan.STARTER
+
+    limits_raw = PlanService.get_limits(plan_enum)
+    projects_limit = limits_raw["max_projects"]
+    documents_limit = limits_raw["max_documents"]
+    runs_limit = limits_raw["max_runs_per_month"]
+
+    # ── Live counts ──────────────────────────────────────────
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    def _count(table: str, monthly: bool = False) -> int:
+        if not resolved_org_id:
+            return 0
+        try:
+            q = admin_sb.table(table).select("id", count="exact").eq("org_id", resolved_org_id)
+            if monthly:
+                q = q.gte("created_at", month_start)
+            r = q.execute()
+            return r.count if r.count is not None else 0
+        except Exception:
+            return 0
+
+    projects_used = _count("projects")
+    documents_used = _count("documents")
+    runs_used = _count("runs", monthly=True)
+
+    # ── Percentages ──────────────────────────────────────────
+    def _pct(used: int, limit: int) -> int:
+        if limit <= 0:
+            return 0
+        return min(100, round((used / limit) * 100))
+
+    next_plan = get_next_tier(plan_enum)
+
+    return {
+        "plan": plan_enum.value,
+        "limits": {
+            "projects": projects_limit,
+            "documents": documents_limit,
+            "runs": runs_limit,
+        },
+        "usage": {
+            "projects": projects_used,
+            "documents": documents_used,
+            "runs": runs_used,
+        },
+        "percent": {
+            "projects": _pct(projects_used, projects_limit),
+            "documents": _pct(documents_used, documents_limit),
+            "runs": _pct(runs_used, runs_limit),
+        },
+        "next_plan": next_plan.value if next_plan else None,
+    }

@@ -728,6 +728,31 @@ export class ApiClient {
         }
     }
 
+    // --- Account Usage Dashboard ---
+    static async getAccountUsage(orgId?: string, token?: string): Promise<{
+        plan: string;
+        limits: { projects: number; documents: number; runs: number };
+        usage: { projects: number; documents: number; runs: number };
+        percent: { projects: number; documents: number; runs: number };
+        next_plan: string | null;
+    }> {
+        const params = new URLSearchParams();
+        if (orgId) params.set("org_id", orgId);
+        const qs = params.toString() ? `?${params.toString()}` : "";
+        try {
+            return await this.fetch(`/account/usage${qs}`, {}, token);
+        } catch (e: any) {
+            if (String(e?.message || "").toLowerCase().includes("unauthorized")) throw e;
+            return {
+                plan: "starter",
+                limits: { projects: 5, documents: 25, runs: 10 },
+                usage: { projects: 0, documents: 0, runs: 0 },
+                percent: { projects: 0, documents: 0, runs: 0 },
+                next_plan: "growth",
+            };
+        }
+    }
+
     // --- Audit Log ---
     static async getAuditLog(orgId: string, filters: Record<string, string> = {}, token?: string): Promise<any> {
         const params = new URLSearchParams({ org_id: orgId, ...filters });

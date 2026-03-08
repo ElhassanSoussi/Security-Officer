@@ -6,8 +6,13 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
 from app.core.config import get_settings
+from app.core.env_readiness import validate_startup_env
 
 settings = get_settings()
+
+# Fail fast in production if required environment variables are missing.
+# In non-production environments, this logs warnings and continues.
+validate_startup_env(settings)
 
 # Python 3.11+ behavior: ensure a default event loop exists for synchronous
 # code that calls asyncio.get_event_loop().run_until_complete(...) in tests.
@@ -43,18 +48,10 @@ app = FastAPI(
 )
 
 # Security headers middleware for API responses
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: FastAPIRequest, call_next) -> StarletteResponse:
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        if not settings.is_development:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        return response
+# (moved to app.core.security_headers to include CSP and keep it reusable)
+from app.core.security_headers import SecurityHeadersMiddleware
 
-app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(SecurityHeadersMiddleware, is_development=settings.is_development)
 
 # Max upload file size enforcement middleware
 class MaxUploadSizeMiddleware(BaseHTTPMiddleware):
@@ -79,7 +76,28 @@ app.add_middleware(MaxUploadSizeMiddleware)
 from app.core.error_handler import register_error_handlers
 register_error_handlers(app)
 
+# Global per-user/IP rate limiting for critical endpoints
+# - Exact-path matching to prevent accidental throttling
+# - Uses the shared RateLimiter (in-memory)
+from app.core.rate_limit import RateLimiter
+from app.core.rate_limit_middleware import EndpointRateLimitMiddleware
+
+_critical_max = int(os.getenv("RATE_LIMIT_CRITICAL", "50"))
+_critical_window = int(os.getenv("RATE_LIMIT_CRITICAL_WINDOW_SECONDS", "60"))
+critical_limiter = RateLimiter(max_requests=_critical_max, window_seconds=_critical_window)
+
+# Note: paths are absolute (after API prefix expansion)
+critical_paths = {
+    f"{settings.API_V1_STR}/assistant/message",
+    f"{settings.API_V1_STR}/billing/create-checkout-session",
+    f"{settings.API_V1_STR}/billing/create-portal-session",
+    f"{settings.API_V1_STR}/runs",
+}
+
+app.add_middleware(EndpointRateLimitMiddleware, limiter=critical_limiter, paths=critical_paths)
+
 # Register request logging middleware (observability)
+# Must be OUTERMOST so it can attach X-Request-Id even when inner middleware short-circuits.
 from app.core.request_logging import RequestLoggingMiddleware
 app.add_middleware(RequestLoggingMiddleware)
 
@@ -141,9 +159,10 @@ def health_check():
 
     return {
         "status": "ok" if db_ok else "degraded",
-        "version": "1.0.0",
+        "version": (settings.APP_VERSION or os.getenv("APP_VERSION") or "1.0.0"),
         "environment": settings.ENVIRONMENT,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "release_timestamp": (settings.RELEASE_TIMESTAMP or os.getenv("RELEASE_TIMESTAMP") or ""),
         "services": {
             "database": db_ok,
             "stripe": bool(os.getenv("STRIPE_SECRET_KEY")),
@@ -334,8 +353,9 @@ def full_health_check():
 
     payload = {
         "status": status,
-        "version": "1.0.0",
+        "version": (settings.APP_VERSION or os.getenv("APP_VERSION") or "1.0.0"),
         "environment": settings.ENVIRONMENT,
+        "release_timestamp": (settings.RELEASE_TIMESTAMP or os.getenv("RELEASE_TIMESTAMP") or ""),
         "checks": checks,
         "latency": latency,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -356,6 +376,7 @@ from app.api.endpoints import sales as sales_ep
 from app.api.endpoints import onboarding as onboarding_ep
 from app.api.endpoints import account as account_ep
 from app.api.endpoints import assistant as assistant_ep
+from app.api.endpoints import system as system_ep
 
 app.include_router(main_router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
@@ -374,3 +395,4 @@ app.include_router(sales_ep.router, prefix=settings.API_V1_STR, tags=["Sales", "
 # Account profile + appearance
 app.include_router(account_ep.router, prefix=settings.API_V1_STR, tags=["Account"])
 app.include_router(assistant_ep.router, prefix=f"{settings.API_V1_STR}/assistant", tags=["Assistant"])
+app.include_router(system_ep.router, prefix=f"{settings.API_V1_STR}", tags=["System"])

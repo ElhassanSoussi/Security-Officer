@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "local" # local, development, staging, production
 
+    # Release metadata
+    APP_VERSION: str = ""
+    RELEASE_TIMESTAMP: str = ""
+
     # Frontend URL (for backend-generated links: email confirmations, Stripe redirects, etc.)
     FRONTEND_URL: str = "http://localhost:3001"
 
@@ -149,9 +153,35 @@ def get_settings():
             "Set these in your Render dashboard (Environment → Environment Variables) "
             "or in backend/.env for local development."
         )
-        raise ValueError(
-            f"CRITICAL: missing required env var(s): {', '.join(missing)}. {hint}"
-        )
+        if settings.is_production:
+            raise ValueError(
+                f"CRITICAL: missing required env var(s): {', '.join(missing)}. {hint}"
+            )
+        else:
+            import logging as _log
+            _log.getLogger("app.config").warning(
+                "DEV WARNING: missing required env var(s): %s. %s",
+                ", ".join(missing),
+                hint,
+            )
+
+    # Production-only required configuration
+    if settings.is_production:
+        prod_required = {
+            "FRONTEND_URL": settings.FRONTEND_URL,
+            "APP_VERSION": settings.APP_VERSION,
+        }
+        prod_missing = [k for k, v in prod_required.items() if not (v or "").strip() or "your-" in (v or "").lower()]
+        if prod_missing:
+            raise ValueError(
+                f"CRITICAL: missing required production env var(s): {', '.join(prod_missing)}"
+            )
+
+        allowed = os.getenv("ALLOWED_ORIGINS", "")
+        if not allowed or allowed.strip() == "*":
+            raise ValueError(
+                "CRITICAL: ALLOWED_ORIGINS is empty or wildcard in production — set explicit origins"
+            )
 
     # Stripe: only mandatory when billing is enabled.
     if settings.BILLING_ENABLED:

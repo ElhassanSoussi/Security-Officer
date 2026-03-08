@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ApiClient } from "@/lib/api";
 import { createClient } from "@/utils/supabase/client";
+import { UsageMeter } from "@/components/ui/UsageMeter";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -771,6 +772,14 @@ export default function BillingPage() {
                                     used={data.usage.runs_used}
                                     limit={data.usage.runs_limit}
                                 />
+                                <div className="pt-1 border-t border-border">
+                                    <Link
+                                        href="/settings/usage"
+                                        className="text-xs text-primary underline underline-offset-2 hover:opacity-80"
+                                    >
+                                        View detailed usage dashboard →
+                                    </Link>
+                                </div>
                             </CardContent>
                         </Card>
                     )}
