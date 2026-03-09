@@ -862,26 +862,35 @@ export default function AuditPage() {
                                     </div>
                                 </div>
 
-                                {/* Sources */}
+                                {/* Source Evidence Panel */}
                                 <div>
-                                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Source</label>
-                                    <div className="mt-1 text-sm">
-                                        {drawerAudit.source_document && drawerAudit.source_document !== "N/A" ? (
-                                            <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
-                                                <div className="font-medium text-blue-800">{drawerAudit.source_document}</div>
+                                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Evidence</label>
+                                    {drawerAudit.source_document && drawerAudit.source_document !== "N/A" ? (
+                                        <div className="mt-1 rounded-lg border border-border bg-muted/30 overflow-hidden">
+                                            <div className="flex items-center justify-between gap-2 bg-muted/60 border-b border-border px-3 py-2">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <FileSearch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                    <span className="text-xs font-medium text-foreground truncate">
+                                                        {drawerAudit.source_document}
+                                                    </span>
+                                                </div>
                                                 {drawerAudit.page_number && drawerAudit.page_number !== "N/A" && (
-                                                    <div className="text-xs text-blue-600 mt-1">{drawerAudit.page_number}</div>
-                                                )}
-                                                {drawerAudit.source_excerpt && (
-                                                    <div className="mt-2 text-xs text-foreground/70 bg-white rounded p-2 border border-blue-100 italic">
-                                                        &ldquo;{drawerAudit.source_excerpt}&rdquo;
-                                                    </div>
+                                                    <span className="text-[11px] text-muted-foreground shrink-0 font-mono bg-background rounded px-1.5 py-0.5 border border-border">
+                                                        {drawerAudit.page_number}
+                                                    </span>
                                                 )}
                                             </div>
-                                        ) : (
-                                            <p className="text-muted-foreground italic">No source document</p>
-                                        )}
-                                    </div>
+                                            {drawerAudit.source_excerpt ? (
+                                                <blockquote className="m-3 text-xs text-foreground/80 italic leading-relaxed border-l-2 border-primary/40 pl-3">
+                                                    &ldquo;{drawerAudit.source_excerpt}&rdquo;
+                                                </blockquote>
+                                            ) : (
+                                                <p className="m-3 text-xs text-muted-foreground italic">No excerpt available.</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="mt-1 text-sm text-muted-foreground italic">No source document linked.</p>
+                                    )}
                                 </div>
 
                                 {/* Review Status */}

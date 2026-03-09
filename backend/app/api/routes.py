@@ -570,7 +570,15 @@ async def analyze_excel(
                     )
             except Exception as audit_err:
                  logger.warning("Failed to persist initial audits: %s", audit_err)
-            
+
+            # Store in generated_answers (best-effort, never blocks response)
+            if run_id:
+                try:
+                    from app.core.answer_store import store_generated_answers
+                    store_generated_answers(sb, run_id, org_id, items)
+                except Exception as ans_err:
+                    logger.warning("Failed to store generated_answers for run %s: %s", run_id, ans_err)
+
         return {"status": "success", "data": items, "run_id": run_id}
     except HTTPException:
         raise

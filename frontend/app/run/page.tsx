@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,18 @@ export default function RunPage() {
     const [step, setStep] = useState<"select" | "upload" | "analyze" | "review">("select");
     const [error, setError] = useState("");
     const [_token, setToken] = useState<string | undefined>(undefined);
+    const [analysisStepIdx, setAnalysisStepIdx] = useState(0);
+    const [avgConfidence, setAvgConfidence] = useState<number | null>(null);
+    const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const ANALYSIS_STEPS = [
+        "Parsing questionnaire structure…",
+        "Retrieving relevant document chunks…",
+        "Generating evidence-based answers…",
+        "Scoring confidence for each answer…",
+        "Flagging answers for review…",
+        "Finalising results…",
+    ];
 
     const getFreshToken = async (): Promise<string | undefined> => {
         const supabase = createClient();
@@ -130,7 +142,13 @@ export default function RunPage() {
 
         setStep("analyze");
         setAnalyzing(true);
+        setAnalysisStepIdx(0);
         setError("");
+
+        // Cycle through progress labels every ~3 s while the request is in flight
+        analysisTimerRef.current = setInterval(() => {
+            setAnalysisStepIdx((i) => Math.min(i + 1, ANALYSIS_STEPS.length - 1));
+        }, 3000);
 
         try {
             const freshToken = await getFreshToken();
@@ -171,16 +189,30 @@ export default function RunPage() {
 
             const data = await res.json();
 
+            if (analysisTimerRef.current) {
+                clearInterval(analysisTimerRef.current);
+                analysisTimerRef.current = null;
+            }
+
+            const rid = data.run_id;
             setRunData({
-                id: data.run_id,
+                id: rid,
                 status: "COMPLETED",
                 org_id: currentOrgId,
                 project_id: selectedProjectId || undefined,
                 questionnaire_filename: file.name,
                 created_at: new Date().toISOString()
             });
-            setQuestions(data.data || []); // API changed to return {data: items}
+            setQuestions(data.data || []);
             setStep("review");
+
+            // Fetch avg confidence from generated_answers
+            if (rid) {
+                try {
+                    const summary = await ApiClient.getRunAnswersSummary(rid, freshToken);
+                    if (summary.total > 0) setAvgConfidence(summary.avg_confidence);
+                } catch { /* non-fatal */ }
+            }
 
             // Onboarding: completing step 3 advances to step 4
             try {
@@ -194,6 +226,10 @@ export default function RunPage() {
             }
 
         } catch (e: any) {
+            if (analysisTimerRef.current) {
+                clearInterval(analysisTimerRef.current);
+                analysisTimerRef.current = null;
+            }
             console.error(e);
             setError("Analysis failed: " + e.message);
         } finally {
@@ -365,7 +401,19 @@ export default function RunPage() {
                         <p className="text-sm text-slate-500">
                             Analyzing <span className="font-medium text-slate-700">{file?.name}</span>…
                         </p>
-                        <p className="text-xs text-slate-400">This may take a minute for large questionnaires.</p>
+                        <p className="text-xs text-primary font-medium animate-pulse">
+                            {ANALYSIS_STEPS[analysisStepIdx]}
+                        </p>
+                        <div className="flex justify-center gap-1 pt-1">
+                            {ANALYSIS_STEPS.map((_, i) => (
+                                <span
+                                    key={i}
+                                    className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
+                                        i <= analysisStepIdx ? "bg-primary" : "bg-muted"
+                                    }`}
+                                />
+                            ))}
+                        </div>
                         {error && (
                             <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100 max-w-md mx-auto text-left">
                                 <span className="font-semibold">Error: </span>{error}
@@ -420,9 +468,20 @@ export default function RunPage() {
                         </div>
                         <div className="rounded-lg border bg-amber-50/60 border-amber-100 p-3 text-center text-amber-800">
                             <div className="text-xl font-bold">{questions.filter(q => q.confidence === "LOW").length}</div>
-                            <div className="text-[11px] font-medium uppercase tracking-wide">Low Confidence</div>
+                            <div className="text-[11px] font-medium uppercase tracking-wide">Needs Review</div>
                         </div>
                     </div>
+
+                    {avgConfidence !== null && (
+                        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm">
+                            <span className="text-muted-foreground">Average confidence</span>
+                            <span className={`font-semibold tabular-nums ml-auto ${
+                                avgConfidence >= 0.7 ? "text-green-700" : avgConfidence >= 0.5 ? "text-amber-700" : "text-red-600"
+                            }`}>
+                                {Math.round(avgConfidence * 100)}%
+                            </span>
+                        </div>
+                    )}
 
                     {questions.filter(q => q.confidence === "LOW").length > 0 && (
                         <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 flex items-start gap-2 text-amber-800 text-sm">

@@ -1891,6 +1891,58 @@ def generate_evidence_package(
     )
 
 
+# ─── Generated Answers endpoints ─────────────────────────────────────────────
+
+@router.get("/{run_id}/answers/summary")
+def get_run_answers_summary(
+    run_id: str,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Return aggregate metrics for a run's generated answers."""
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    try:
+        run_res = sb.table("runs").select("org_id").eq("id", run_id).single().execute()
+        if not run_res.data:
+            raise HTTPException(status_code=404, detail="Run not found")
+        org_id = run_res.data["org_id"]
+        resolve_org_id_for_user(sb, user_id, org_id)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    from app.core.answer_store import get_run_answers_summary
+    return get_run_answers_summary(sb, run_id)
+
+
+@router.get("/{run_id}/answers")
+def get_run_answers(
+    run_id: str,
+    needs_review: bool = Query(False, description="Filter to answers requiring review"),
+    limit: int = Query(200, ge=1, le=500),
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security),
+):
+    """List generated answers for a run."""
+    user_id = require_user_id(user)
+    sb = get_supabase(token.credentials)
+    try:
+        run_res = sb.table("runs").select("org_id").eq("id", run_id).single().execute()
+        if not run_res.data:
+            raise HTTPException(status_code=404, detail="Run not found")
+        org_id = run_res.data["org_id"]
+        resolve_org_id_for_user(sb, user_id, org_id)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    from app.core.answer_store import get_run_answers
+    return get_run_answers(sb, run_id, only_needs_review=needs_review, limit=limit)
+
+
 @router.get("/{run_id}/evidence-records")
 def list_evidence_records(
     run_id: str,

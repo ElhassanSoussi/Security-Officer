@@ -267,6 +267,33 @@ export class ApiClient {
         return this.fetch<any[]>(`/runs/${runId}/audits`, {}, token);
     }
 
+    static async getRunAnswersSummary(runId: string, token?: string): Promise<{
+        total: number;
+        needs_review_count: number;
+        avg_confidence: number;
+    }> {
+        try {
+            return await this.fetch(`/runs/${runId}/answers/summary`, {}, token);
+        } catch {
+            return { total: 0, needs_review_count: 0, avg_confidence: 0 };
+        }
+    }
+
+    static async getRunAnswers(
+        runId: string,
+        token?: string,
+        needsReview?: boolean,
+    ): Promise<any[]> {
+        const params = new URLSearchParams();
+        if (needsReview) params.set("needs_review", "true");
+        const qs = params.toString() ? `?${params}` : "";
+        try {
+            return await this.fetch<any[]>(`/runs/${runId}/answers${qs}`, {}, token);
+        } catch {
+            return [];
+        }
+    }
+
     static async updateAudit(runId: string, auditId: string, answerText: string, token?: string): Promise<any> {
         return this.patch<any>(`/runs/${runId}/audits/${auditId}`, { answer_text: answerText }, token);
     }
