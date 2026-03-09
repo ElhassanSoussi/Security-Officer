@@ -378,6 +378,7 @@ from app.api.endpoints import account as account_ep
 from app.api.endpoints import assistant as assistant_ep
 from app.api.endpoints import system as system_ep
 from app.api.endpoints import compliance as compliance_ep
+from app.api.endpoints import knowledge_memory as knowledge_memory_ep
 
 app.include_router(main_router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
@@ -399,3 +400,5 @@ app.include_router(assistant_ep.router, prefix=f"{settings.API_V1_STR}/assistant
 app.include_router(system_ep.router, prefix=f"{settings.API_V1_STR}", tags=["System"])
 # Compliance Intelligence Engine
 app.include_router(compliance_ep.router, prefix=f"{settings.API_V1_STR}/compliance", tags=["Compliance"])
+# Institutional Knowledge Memory
+app.include_router(knowledge_memory_ep.router, prefix=f"{settings.API_V1_STR}/knowledge-memory", tags=["Knowledge Memory"])

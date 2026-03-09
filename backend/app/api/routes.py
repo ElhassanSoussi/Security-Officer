@@ -346,6 +346,26 @@ async def analyze_excel(
                 logger.info("Phase 15: %d/%d answers served from institutional memory", memory_hits, len(items))
         except Exception as mem_err:
             logger.warning("Phase 15: institutional memory lookup failed (non-fatal): %s", mem_err)
+
+        # Knowledge Memory — vector-similarity lookup (0.85 threshold) overrides AI answers
+        try:
+            from app.core.knowledge_memory import search_memory, record_memory_match
+            _km_sb = get_supabase(token.credentials)
+            km_hits = 0
+            for item in items:
+                if not item.question or item.answer_origin == "reused":
+                    continue
+                km_match = search_memory(item.question, org_id, _km_sb)
+                if km_match:
+                    item.ai_answer    = km_match["answer_text"]
+                    item.final_answer = km_match["answer_text"]
+                    item.answer_origin = "memory"
+                    item.confidence   = "HIGH" if km_match.get("confidence", 0) >= 0.8 else "MEDIUM"
+                    km_hits += 1
+            if km_hits:
+                logger.info("KnowledgeMemory: %d/%d answers served from knowledge_memory", km_hits, len(items))
+        except Exception as km_err:
+            logger.warning("KnowledgeMemory lookup failed (non-fatal): %s", km_err)
         
         # Sprint 7: Log Run
         run_id = None
@@ -578,6 +598,22 @@ async def analyze_excel(
                     store_generated_answers(sb, run_id, org_id, items)
                 except Exception as ans_err:
                     logger.warning("Failed to store generated_answers for run %s: %s", run_id, ans_err)
+
+            # Record knowledge_memory matches (best-effort)
+            if run_id:
+                try:
+                    from app.core.knowledge_memory import record_memory_match
+                    for item in items:
+                        if getattr(item, "answer_origin", None) == "memory" and getattr(item, "_km_match_id", None):
+                            record_memory_match(
+                                question_text=item.question or "",
+                                matched_memory_id=item._km_match_id,
+                                similarity_score=getattr(item, "_km_similarity", 0.0),
+                                run_id=run_id,
+                                sb=sb,
+                            )
+                except Exception as km_rec_err:
+                    logger.debug("Failed to record memory matches: %s", km_rec_err)
 
         return {"status": "success", "data": items, "run_id": run_id}
     except HTTPException:

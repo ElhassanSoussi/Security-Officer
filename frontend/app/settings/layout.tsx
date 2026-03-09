@@ -12,7 +12,7 @@ const NAV_ITEMS = [
     { href: "/settings/usage", label: "Usage", icon: BarChart3 },
     { href: "/settings/appearance", label: "Appearance", icon: Palette },
     { href: "/settings/security", label: "Security", icon: Shield },
-    { href: "/settings/memory", label: "Inst. Memory", icon: BrainCircuit },
+    { href: "/settings/memory", label: "Knowledge Memory", icon: BrainCircuit },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

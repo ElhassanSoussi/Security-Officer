@@ -11,12 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toaster";
 import { createClient } from "@/utils/supabase/client";
 import { getStoredOrgId, setStoredOrgId } from "@/lib/orgContext";
-import { config } from "@/lib/config";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatConfidencePercent, normalizeConfidenceScore } from "@/lib/confidence";
 import {
     FileSearch, Download, ChevronLeft, ChevronRight,
-    CheckCircle2, XCircle, Clock, Inbox, Eye, ShieldCheck, Layers
+    CheckCircle2, XCircle, Clock, Inbox, Eye, ShieldCheck, Brain
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from "@/components/ui/sheet";
 import PageHeader from "@/components/ui/PageHeader";
@@ -81,6 +80,7 @@ export default function AuditPage() {
     const [drawerAnswer, setDrawerAnswer] = useState("");
     const [drawerNote, setDrawerNote] = useState("");
     const [drawerSaving, setDrawerSaving] = useState(false);
+    const [memorySaving, setMemorySaving] = useState(false);
     const [auditSort, setAuditSort] = useState<{ key: "created_at" | "confidence" | "review_status"; dir: "asc" | "desc" }>({
         key: "created_at",
         dir: "desc",
@@ -958,33 +958,38 @@ export default function AuditPage() {
                                 )}
                             </SheetBody>
                             <SheetFooter className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end border-t pt-4 border-border">
-                                {/* Promote to Memory */}
-                                {rbac.canReview && drawerAnswer !== (drawerAudit.original_answer || "") && drawerAnswer !== "" && (
+                                {/* Save to Knowledge Memory */}
+                                {rbac.canReview && drawerAudit.review_status === "approved" && (
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         className="text-purple-700 border-purple-200 hover:bg-purple-50"
+                                        disabled={memorySaving}
                                         onClick={async () => {
+                                            if (!orgId) return;
+                                            setMemorySaving(true);
                                             try {
                                                 const token = await getToken();
                                                 if (!token) return;
-                                                const res = await fetch(`${config.apiUrl}/runs/institutional-answers/promote`, {
-                                                    method: "POST",
-                                                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                                                    body: JSON.stringify({ audit_id: drawerAudit.id, answer_text: drawerAnswer })
+                                                await ApiClient.saveToKnowledgeMemory(drawerAudit.id, orgId, token);
+                                                toast({
+                                                    title: "Saved to Knowledge Memory",
+                                                    description: "This answer is now searchable across future questionnaires.",
                                                 });
-                                                if (res.ok) {
-                                                    toast({ title: "Promoted", description: "Answer promoted to institutional memory." });
-                                                } else {
-                                                    toast({ title: "Notice", description: "Answer promoted to institutional memory via approval flow." });
-                                                }
-                                            } catch {
-                                                toast({ title: "Notice", description: "Answer will be promoted to institutional memory when approved." });
+                                            } catch (e: any) {
+                                                toast({
+                                                    title: "Save failed",
+                                                    description: e.message ?? "Could not save to knowledge memory.",
+                                                    variant: "destructive",
+                                                });
+                                            } finally {
+                                                setMemorySaving(false);
                                             }
                                         }}
-                                        title="Save this edited answer as a new canonical memory"
+                                        title="Save this approved answer to vector knowledge memory for reuse"
                                     >
-                                        <Layers className="h-4 w-4 mr-1" /> Promote to Memory
+                                        <Brain className="h-4 w-4 mr-1" />
+                                        {memorySaving ? "Saving…" : "Save to Knowledge Memory"}
                                     </Button>
                                 )}
 

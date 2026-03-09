@@ -44,11 +44,12 @@ interface Message {
 // ── Help topic shortcuts ───────────────────────────────────────────────────────
 
 const HELP_TOPICS: { label: string; prompt: string }[] = [
-    { label: "Getting Started",  prompt: "How do I get started with the platform?" },
-    { label: "Documents",        prompt: "How do I upload and manage documents?" },
-    { label: "Runs",             prompt: "How do I start a questionnaire run?" },
-    { label: "Review & Audit",   prompt: "Where do I find my audit log?" },
-    { label: "Plans & Billing",  prompt: "What's my current plan and usage?" },
+    { label: "Getting Started",    prompt: "How do I get started with the platform?" },
+    { label: "Documents",          prompt: "How do I upload and manage documents?" },
+    { label: "Runs",               prompt: "How do I start a questionnaire run?" },
+    { label: "Review & Audit",     prompt: "Where do I find my audit log?" },
+    { label: "Plans & Billing",    prompt: "What's my current plan and usage?" },
+    { label: "Knowledge Memory",   prompt: "What answers are saved in my knowledge memory?" },
 ];
 
 // ── Suggested prompts ────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ const SUGGESTED_PROMPTS = [
     "How do I add documents to a project?",
     "Where do I find my audit log?",
     "Why am I blocked from uploading?",
+    "What answers are saved in my knowledge memory?",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

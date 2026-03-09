@@ -1405,4 +1405,80 @@ export class ApiClient {
             return [];
         }
     }
+
+    // ── Knowledge Memory ──────────────────────────────────────────────────────
+
+    /**
+     * Save an approved audit answer into vector knowledge memory.
+     * Returns { status: "saved", id: <uuid> }.
+     */
+    static async saveToKnowledgeMemory(
+        auditId: string,
+        orgId: string,
+        token?: string,
+    ): Promise<{ status: string; id: string }> {
+        return this.post("/knowledge-memory/save", { audit_id: auditId, org_id: orgId }, token);
+    }
+
+    /** List knowledge_memory entries for an org (paginated). */
+    static async listKnowledgeMemory(
+        orgId: string,
+        token?: string,
+        limit: number = 50,
+        offset: number = 0,
+    ): Promise<any[]> {
+        const params = new URLSearchParams({ org_id: orgId, limit: String(limit), offset: String(offset) });
+        try {
+            return await this.fetch(`/knowledge-memory?${params}`, {}, token);
+        } catch {
+            return [];
+        }
+    }
+
+    /** Edit the answer_text or question_text of a knowledge_memory entry. */
+    static async updateKnowledgeMemoryEntry(
+        memoryId: string,
+        payload: { answer_text?: string; question_text?: string },
+        token?: string,
+    ): Promise<any> {
+        return this.patch(`/knowledge-memory/${memoryId}`, payload, token);
+    }
+
+    /** Hard-delete a knowledge_memory entry (admin/owner only). */
+    static async deleteKnowledgeMemoryEntry(
+        memoryId: string,
+        token?: string,
+    ): Promise<any> {
+        return this.delete(`/knowledge-memory/${memoryId}`, token);
+    }
+
+    /** List memory_matches (usage log) for an org. */
+    static async listMemoryMatches(
+        orgId: string,
+        token?: string,
+    ): Promise<any[]> {
+        const params = new URLSearchParams({ org_id: orgId });
+        try {
+            return await this.fetch(`/knowledge-memory/matches?${params}`, {}, token);
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Vector-search knowledge memory — used by the Assistant.
+     * Returns up to 5 matches above 0.65 threshold.
+     */
+    static async searchKnowledgeMemory(
+        orgId: string,
+        q: string,
+        token?: string,
+    ): Promise<any[]> {
+        const params = new URLSearchParams({ org_id: orgId, q });
+        try {
+            return await this.fetch(`/knowledge-memory/search?${params}`, {}, token);
+        } catch {
+            return [];
+        }
+    }
 }
